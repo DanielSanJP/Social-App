@@ -1,33 +1,41 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 import { formatDistance } from "date-fns";
 
 const SocialFeed = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate(); // Initialize useNavigate
 
-  // Fetch posts from the backend
   useEffect(() => {
+    const token = localStorage.getItem("authToken");
+
+    // Redirect to login if no token is found
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
     const fetchPosts = async () => {
       try {
-        const token = localStorage.getItem("authToken"); // Retrieve token from localStorage
         const response = await fetch("http://localhost:5000/api/posts", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-        console.log("Response status:", response.status); // Log response status
-        console.log("Response headers:", response.headers); // Log response headers
+        console.log("Response status:", response.status);
+        console.log("Response headers:", response.headers);
 
         if (!response.ok) {
           throw new Error("Failed to fetch posts");
         }
 
         const data = await response.json();
-        console.log("Fetched posts data:", data); // Log the fetched data
+        console.log("Fetched posts data:", data);
         setPosts(data);
       } catch (err) {
-        console.error("Error fetching posts:", err.message); // Log the error
+        console.error("Error fetching posts:", err.message);
         setError(err.message);
       } finally {
         setLoading(false);
@@ -35,10 +43,10 @@ const SocialFeed = () => {
     };
 
     fetchPosts();
-  }, []);
+  }, [navigate]);
 
   const handleLike = async (postId) => {
-    console.log("Liking post with ID:", postId); // Debugging
+    console.log("Liking post with ID:", postId);
     try {
       const response = await fetch(
         `http://localhost:5000/api/posts/${postId}/like`,
@@ -56,7 +64,7 @@ const SocialFeed = () => {
           post.id === postId ? { ...post, likes: updatedPost.post.likes } : post
         )
       );
-      console.log("Post liked successfully:", updatedPost.post); // Debugging
+      console.log("Post liked successfully:", updatedPost.post);
     } catch (err) {
       console.error("Error liking post:", err.message);
     }
