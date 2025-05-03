@@ -25,5 +25,11 @@ export const authenticateUser = async (req, res, next) => {
     return res.status(401).json({ error: "Unauthorized: Invalid token" });
   }
 
+  // Ensure req.user is validated before accessing it in middleware
+  if (!req.user) {
+    console.error("User not authenticated");
+    return res.status(401).json({ error: "Unauthorized: User not authenticated" });
+  }
+
   next();
 };

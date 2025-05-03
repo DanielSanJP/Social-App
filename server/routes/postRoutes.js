@@ -7,6 +7,7 @@ import {
   updatePost,
   deletePost,
   likePost,
+  toggleLike,
 } from "../controllers/postsController.js";
 import { authenticateUser } from "../middleware/authMiddleware.js";
 
@@ -36,5 +37,8 @@ router.delete("/:id", deletePost);
 
 // Route to like a post
 router.patch("/:id/like", likePost);
+
+// Route to toggle a like on a post
+router.patch("/:id/toggle-like", toggleLike);
 
 export default router;

@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useUser } from "../contexts/UserContext";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const { user, setUser } = useUser(); // Use global user context
+  const navigate = useNavigate(); // Initialize useNavigate
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -26,6 +28,9 @@ function Login() {
 
       // Store the access token in localStorage
       localStorage.setItem("authToken", data.access_token);
+
+      // Redirect to the SocialFeed page
+      navigate("/socialfeed");
     } catch (err) {
       setError(err.message);
     }
