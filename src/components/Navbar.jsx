@@ -34,7 +34,8 @@ function Navbar() {
               <Link to="/createpost">Create Post</Link>
             </li>
             <li>
-              <Link to="/profile">Profile</Link>
+              <Link to={`/profile/${user.id}`}>Profile</Link>{" "}
+              {/* Dynamically navigate to the logged-in user's profile */}
             </li>
             <li>
               <button

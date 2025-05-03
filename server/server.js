@@ -7,11 +7,10 @@ import cors from "cors";
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-
-// Allow requests from the frontend
-app.use(cors({ origin: "http://localhost:5173" })); // Replace 3000 with your frontend port
+// Use environment variables for CORS origin
+const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
+app.use(cors({ origin: corsOrigin })); // Replace 3000 with your frontend port
 app.use(express.json()); // Middleware to parse JSON bodies
-
 
 // Mount the authRoutes at /api/auth
 app.use('/api/auth', authRoutes);  // This ensures the route prefix is correct
@@ -34,7 +33,6 @@ app.use((req, res, next) => {
   console.log(`${req.method} request made to: ${req.url}`);
   next();
 });
-
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

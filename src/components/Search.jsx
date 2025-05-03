@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const Search = () => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
+  const navigate = useNavigate(); // Add useNavigate
 
   const handleSearch = async (searchQuery) => {
     if (searchQuery.trim() === "") {
@@ -35,6 +37,10 @@ const Search = () => {
     handleSearch(searchQuery); // Trigger search on input change
   };
 
+  const handleUserClick = (userId) => {
+    navigate(`/profile/${userId}`); // Navigate to the user's profile
+  };
+
   return (
     <div>
       <input
@@ -46,7 +52,11 @@ const Search = () => {
       <div style={{ marginTop: "20px" }}>
         {Array.isArray(results) &&
           results.map((user) => (
-            <div key={user.id}>
+            <div
+              key={user.id}
+              onClick={() => handleUserClick(user.id)} // Add click handler
+              style={{ cursor: "pointer" }}
+            >
               <img
                 src={user.profile_pic_url} // Use the correct field name
                 alt={`${user.username}'s profile`}

@@ -4,7 +4,7 @@ import { UserProvider, useUser } from "./contexts/UserContext"; // Import UserPr
 import Navbar from "./components/Navbar";
 import Login from "./components/Login";
 import Signup from "./components/Signup";
-import Profile from "./components/Profile";
+import Profile, { ProtectedRoute } from "./components/Profile";
 import SocialFeed from "./components/SocialFeed";
 import "./styles/App.css";
 import CreatePost from "./components/CreatePost";
@@ -23,7 +23,14 @@ const AppContent = () => {
         <Route path="/" element={<SocialFeed />} />
         <Route path="/socialfeed" element={<SocialFeed />} />
         <Route path="/search" element={<Search />} />
-        <Route path="/profile" element={<Profile />} />
+        <Route
+          path="/profile/:userId"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/createpost" element={<CreatePost />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />

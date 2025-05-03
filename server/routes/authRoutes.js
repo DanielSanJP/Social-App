@@ -1,15 +1,11 @@
 import express from 'express';
 import { signUp, logIn, getUser } from '../controllers/authController.js';
-import multer from 'multer';
-
-// Configure multer for file uploads
-const storage = multer.memoryStorage(); // Store files in memory
-const upload = multer({ storage });
+import { uploadMiddleware } from '../utils/multerConfig.js';
 
 const router = express.Router();
 
 // Route for sign-up with file upload middleware
-router.post('/signup', upload.single('profilePic'), signUp);
+router.post('/signup', uploadMiddleware.single('profilePic'), signUp);
 
 // Route for login
 router.post('/login', logIn);

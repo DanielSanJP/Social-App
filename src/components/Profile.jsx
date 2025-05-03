@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useUser } from "../contexts/UserContext";
-import { Navigate } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 
 function ProtectedRoute({ children }) {
   const { user } = useUser();
@@ -13,16 +13,37 @@ function ProtectedRoute({ children }) {
 }
 
 const Profile = () => {
+  const { userId } = useParams(); // Get userId from URL params
   const { user, updateUser } = useUser();
-  const [username, setUsername] = useState(user?.username || "");
+  const [profileData, setProfileData] = useState(null);
+  const [username, setUsername] = useState("");
   const [profilePicFile, setProfilePicFile] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    console.log("Profile component mounted");
-    console.log("User data in Profile component:", user);
-  }, [user]);
+    if (userId === user?.id) {
+      setProfileData(user);
+      setUsername(user?.username || "");
+    } else {
+      // Fetch the profile data for the other user
+      const fetchProfile = async () => {
+        try {
+          const response = await fetch(
+            `http://localhost:5000/api/users/${userId}`
+          );
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error || "Failed to fetch profile.");
+          }
+          setProfileData(data);
+        } catch (error) {
+          console.error("Error fetching profile:", error);
+        }
+      };
+      fetchProfile();
+    }
+  }, [userId, user]);
 
   const handleSave = async () => {
     const formData = new FormData();
@@ -33,11 +54,11 @@ const Profile = () => {
     }
 
     try {
-      const token = localStorage.getItem("authToken"); // Retrieve the token from localStorage or another secure storage
+      const token = localStorage.getItem("authToken");
       if (!token) {
         console.error("No token found in localStorage");
       } else {
-        console.log("Token being sent:", token); // Debug log for token
+        console.log("Token being sent:", token);
       }
       const response = await fetch(
         `http://localhost:5000/api/users/${user.id}`,
@@ -56,7 +77,6 @@ const Profile = () => {
         throw new Error(data.error || "Failed to update profile.");
       }
 
-      // Update the user context with the new data
       updateUser(data.user);
       setMessage("Profile updated successfully!");
     } catch (error) {
@@ -67,16 +87,21 @@ const Profile = () => {
     setIsEditing(false);
   };
 
+  if (!profileData) {
+    return <p>Loading...</p>;
+  }
+
   return (
     <div>
-      <h1>{user?.username}</h1>
+      <h1>{profileData.username}</h1>
       <img
-        src={user?.profile_pic_url || "https://via.placeholder.com/150"}
-        alt={`${user?.username || "User"}`}
+        src={profileData.profile_pic_url || "https://via.placeholder.com/150"}
+        alt={`${profileData.username || "User"}`}
         style={{ width: "150px", height: "150px", borderRadius: "50%" }}
       />
-      <h2></h2>
-      <button onClick={() => setIsEditing(true)}>Edit Profile</button>
+      {userId === user?.id && (
+        <button onClick={() => setIsEditing(true)}>Edit Profile</button>
+      )}
 
       {isEditing && (
         <div className="popup-form">
