@@ -8,6 +8,7 @@ import Profile from "./components/Profile";
 import SocialFeed from "./components/SocialFeed";
 import "./styles/App.css";
 import CreatePost from "./components/CreatePost";
+import Search from "./components/Search";
 
 const AppContent = () => {
   const { user } = useUser();
@@ -21,6 +22,7 @@ const AppContent = () => {
       <Routes>
         <Route path="/" element={<SocialFeed />} />
         <Route path="/socialfeed" element={<SocialFeed />} />
+        <Route path="/search" element={<Search />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/createpost" element={<CreatePost />} />
         <Route path="/login" element={<Login />} />
