@@ -28,27 +28,76 @@ export const UserProvider = ({ children }) => {
     }
   }, [user]);
 
+  const refreshAuthToken = async () => {
+    try {
+      const refreshToken = localStorage.getItem("refreshToken");
+      if (!refreshToken) {
+        console.warn("No refresh token found. Cannot refresh auth token.");
+        return false;
+      }
+
+      const response = await fetch("http://localhost:5000/api/auth/refresh", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (!response.ok) {
+        console.error("Failed to refresh auth token.");
+        return false;
+      }
+
+      const data = await response.json();
+      localStorage.setItem("authToken", data.authToken);
+      return true;
+    } catch (error) {
+      console.error("Error refreshing auth token:", error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const token = localStorage.getItem("authToken");
+        let token = localStorage.getItem("authToken");
 
         if (!token) {
           console.log("No authentication token found. Skipping user fetch.");
           return;
         }
 
-        const response = await fetch("http://localhost:5000/api/auth/user", {
+        console.log("Authorization Token:", token); // Debugging
+
+        let response = await fetch("http://localhost:5000/api/auth/user", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
 
+        console.log("Fetch User Response Status:", response.status); // Debugging
+
+        if (response.status === 401) {
+          console.warn("Unauthorized. Attempting to refresh token.");
+          const refreshed = await refreshAuthToken();
+          if (refreshed) {
+            token = localStorage.getItem("authToken");
+            response = await fetch("http://localhost:5000/api/auth/user", {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            });
+          }
+        }
+
         if (response.status === 401) {
           console.warn(
-            "Unauthorized. Clearing token and resetting user state."
+            "Unauthorized after refresh attempt. Clearing token and resetting user state."
           );
+          alert("Your session has expired. Please log in again.");
           localStorage.removeItem("authToken");
+          localStorage.removeItem("refreshToken");
           setUser(null);
           return;
         }

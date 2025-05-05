@@ -1,0 +1,28 @@
+.messages-list {
+  padding: 20px;
+}
+
+.conversation-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.conversation-item:hover {
+  background-color: #f9f9f9;
+}
+
+.conversation-profile-pic {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  margin-right: 10px;
+}
+
+.conversation-username {
+  font-size: 16px;
+  font-weight: bold;
+}

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useUser } from "../contexts/UserContext";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams, useNavigate } from "react-router-dom"; // Import useNavigate
 
 function ProtectedRoute({ children }) {
   const { user } = useUser();
@@ -20,6 +20,7 @@ const Profile = () => {
   const [profilePicFile, setProfilePicFile] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState("");
+  const navigate = useNavigate(); // Initialize useNavigate
 
   useEffect(() => {
     if (userId === user?.id) {
@@ -87,6 +88,44 @@ const Profile = () => {
     setIsEditing(false);
   };
 
+  const handleStartChat = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      console.log("Authorization Token:", token); // Debugging
+
+      if (!token) {
+        console.error("No token found, redirecting to login...");
+        navigate("/login");
+        return;
+      }
+
+      // Create or fetch a conversation with the user
+      const response = await fetch(
+        "http://localhost:5000/api/messages/conversations",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ recipientId: userId }), // Pass the recipient's userId
+        }
+      );
+
+      const data = await response.json();
+      console.log("Start Chat Response:", data); // Debugging
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to start chat.");
+      }
+
+      // Navigate to the chat page for the conversation
+      navigate(`/chat/${data.conversationId}`);
+    } catch (error) {
+      console.error("Error starting chat:", error);
+    }
+  };
+
   if (!profileData) {
     return <p>Loading...</p>;
   }
@@ -99,8 +138,10 @@ const Profile = () => {
         alt={`${profileData.username || "User"}`}
         style={{ width: "150px", height: "150px", borderRadius: "50%" }}
       />
-      {userId === user?.id && (
+      {userId === user?.id ? (
         <button onClick={() => setIsEditing(true)}>Edit Profile</button>
+      ) : (
+        <button onClick={handleStartChat}>Message</button> // Add Message button
       )}
 
       {isEditing && (

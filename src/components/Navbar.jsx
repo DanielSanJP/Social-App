@@ -28,6 +28,9 @@ function Navbar() {
         <li>
           <Link to="/search">Search</Link>
         </li>
+        <li>
+          <Link to="/messages">Messages</Link>
+        </li>
         {user ? (
           <>
             <li>

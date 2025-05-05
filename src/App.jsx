@@ -6,9 +6,11 @@ import Login from "./components/Login";
 import Signup from "./components/Signup";
 import Profile, { ProtectedRoute } from "./components/Profile";
 import SocialFeed from "./components/SocialFeed";
-import "./styles/App.css";
 import CreatePost from "./components/CreatePost";
 import Search from "./components/Search";
+import Messages from "./components/Messages"; // Import Messages component
+import Chat from "./components/Chat"; // Import Chat component
+import "./styles/App.css";
 
 const AppContent = () => {
   const { user } = useUser();
@@ -34,6 +36,27 @@ const AppContent = () => {
         <Route path="/createpost" element={<CreatePost />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route
+          path="/messages"
+          element={
+            <ProtectedRoute>
+              <Messages
+                onSelectConversation={
+                  (conversation) =>
+                    (window.location.href = `/chat/${conversation.conversation_id}`) // Use `conversation.conversation_id`
+                }
+              />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/chat/:conversationId"
+          element={
+            <ProtectedRoute>
+              <Chat />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </Router>
   );
