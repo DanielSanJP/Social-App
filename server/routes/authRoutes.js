@@ -1,6 +1,7 @@
 import express from 'express';
-import { signUp, logIn, getUser } from '../controllers/authController.js';
+import { signUp, logIn, getUser, refreshAuthToken } from '../controllers/authController.js';
 import { uploadMiddleware } from '../utils/multerConfig.js';
+import { authenticateUser } from '../middleware/authMiddleware.js'; // Import authentication middleware
 
 const router = express.Router();
 
@@ -11,6 +12,9 @@ router.post('/signup', uploadMiddleware.single('profilePic'), signUp);
 router.post('/login', logIn);
 
 // Route to fetch the authenticated user's data
-router.get('/user', getUser);
+router.get('/user', authenticateUser, getUser); // Add authenticateUser middleware
+
+// Add a route for refreshing the auth token
+router.post('/refresh', refreshAuthToken);
 
 export default router;

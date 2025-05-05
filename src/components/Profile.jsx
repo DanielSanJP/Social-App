@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { useUser } from "../contexts/UserContext";
-import { Navigate, useParams, useNavigate } from "react-router-dom"; // Import useNavigate
+import { Navigate, useParams, useNavigate } from "react-router-dom";
+import Cookies from "js-cookie"; // Replace cookie with js-cookie
 
 function ProtectedRoute({ children }) {
   const { user } = useUser();
 
   if (!user) {
-    return <Navigate to="/login" replace />; // Redirect to login if not logged in
+    return <Navigate to="/login" replace />;
   }
 
-  return children; // Render the protected component if logged in
+  return children;
 }
 
 const Profile = () => {
@@ -55,12 +56,13 @@ const Profile = () => {
     }
 
     try {
-      const token = localStorage.getItem("authToken");
+      const token = Cookies.get("authToken");
       if (!token) {
-        console.error("No token found in localStorage");
-      } else {
-        console.log("Token being sent:", token);
+        console.error("No token found in cookies");
+        navigate("/login");
+        return;
       }
+
       const response = await fetch(
         `http://localhost:5000/api/users/${user.id}`,
         {
@@ -68,6 +70,7 @@ const Profile = () => {
           headers: {
             Authorization: `Bearer ${token}`,
           },
+          credentials: "include", // Include cookies in the request
           body: formData,
         }
       );
@@ -90,14 +93,18 @@ const Profile = () => {
 
   const handleStartChat = async () => {
     try {
-      const token = localStorage.getItem("authToken");
-      console.log("Authorization Token:", token); // Debugging
+      console.log("Document cookies (debug):", document.cookie); // Debugging cookies
+
+      // Use js-cookie instead of cookie.parse
+      const token = Cookies.get("authToken");
 
       if (!token) {
-        console.error("No token found, redirecting to login...");
+        console.error("No token found in cookies, redirecting to login...");
         navigate("/login");
         return;
       }
+
+      console.log("Authorization Token:", token); // Debugging
 
       // Create or fetch a conversation with the user
       const response = await fetch(
@@ -108,6 +115,7 @@ const Profile = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
+          credentials: "include", // Include cookies in the request
           body: JSON.stringify({ recipientId: userId }), // Pass the recipient's userId
         }
       );

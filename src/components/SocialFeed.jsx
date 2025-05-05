@@ -9,22 +9,10 @@ const SocialFeed = () => {
   const navigate = useNavigate(); // Initialize useNavigate
 
   useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    console.log("Token retrieved:", token); // Debugging token retrieval
-
-    // Redirect to login if no token is found
-    if (!token) {
-      console.error("No token found, redirecting to login...");
-      navigate("/login");
-      return;
-    }
-
     const fetchPosts = async () => {
       try {
         const response = await fetch("http://localhost:5000/api/posts", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: "include", // Include cookies in the request
         });
         console.log("Response status:", response.status);
         console.log("Response headers:", response.headers);
@@ -49,22 +37,12 @@ const SocialFeed = () => {
   }, [navigate]);
 
   const handleToggleLike = async (postId) => {
-    const token = localStorage.getItem("authToken");
-
-    if (!token) {
-      console.error("No token found, cannot toggle like.");
-      navigate("/login");
-      return;
-    }
-
     try {
       const response = await fetch(
         `http://localhost:5000/api/posts/${postId}/toggle-like`,
         {
           method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: "include", // Include cookies in the request
         }
       );
 

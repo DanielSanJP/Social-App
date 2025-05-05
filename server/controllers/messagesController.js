@@ -14,7 +14,7 @@ export const getConversations = async (req, res) => {
     if (memberError) throw new Error(memberError.message);
 
     if (!conversationMembers || conversationMembers.length === 0) {
-      return res.status(404).json({ error: "No conversations found." });
+      return res.status(200).json([]); // Return an empty array instead of 404
     }
 
     const conversationIds = conversationMembers.map((member) => member.conversation_id);
@@ -74,25 +74,52 @@ export const getMessages = async (req, res) => {
 export const sendMessage = async (req, res) => {
   const { conversationId } = req.params;
   const { content } = req.body;
-  const senderId = req.user.id;
-
-  if (!content || content.trim() === "") {
-    return res.status(400).json({ error: "Message content cannot be empty." });
-  }
+  const senderId = req.user.id; // Assuming `authenticateUser` middleware attaches the user ID
 
   try {
-    const { data: message, error } = await supabase
+    // Fetch the members of the conversation
+    const { data: conversationMembers, error: membersError } = await supabase
+      .from('conversation_members')
+      .select('user_id')
+      .eq('conversation_id', conversationId);
+
+    if (membersError) {
+      console.error("Error fetching conversation members:", membersError);
+      return res.status(400).json({ error: "Failed to fetch conversation members." });
+    }
+
+    // Determine the receiver_id (the member who is not the sender)
+    const receiverId = conversationMembers
+      .map((member) => member.user_id)
+      .find((id) => id !== senderId);
+
+    if (!receiverId) {
+      return res.status(400).json({ error: "Receiver not found in the conversation." });
+    }
+
+    // Insert the message into the database
+    const { data: message, error: messageError } = await supabase
       .from('messages')
-      .insert([{ conversation_id: conversationId, sender_id: senderId, content }])
-      .select()
-      .single();
+      .insert([
+        {
+          conversation_id: conversationId,
+          sender_id: senderId,
+          receiver_id: receiverId,
+          content,
+          created_at: new Date(),
+        },
+      ])
+      .select();
 
-    if (error) throw new Error(error.message);
+    if (messageError) {
+      console.error("Error inserting message:", messageError);
+      return res.status(400).json({ error: "Failed to send message." });
+    }
 
-    res.status(201).json(message);
-  } catch (error) {
-    console.error('Error sending message:', error);
-    res.status(500).json({ error: error.message });
+    res.status(201).json(message[0]);
+  } catch (err) {
+    console.error("Unexpected error sending message:", err);
+    res.status(500).json({ error: "Internal server error." });
   }
 };
 
@@ -101,28 +128,45 @@ export const createOrFetchConversation = async (req, res) => {
   const { recipientId } = req.body;
   const senderId = req.user.id;
 
+  console.log("Authenticated user in createOrFetchConversation:", req.user); // Debugging req.user
+  console.log("Recipient ID received in request body:", recipientId); // Debugging recipientId
+
+  if (!senderId) {
+    console.warn("No senderId found in req.user. Returning unauthorized.");
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
   try {
-    // Check if a conversation already exists
     const { data: senderConversations, error: senderError } = await supabase
       .from('conversation_members')
       .select('conversation_id')
       .eq('user_id', senderId);
 
-    if (senderError) throw new Error(senderError.message);
+    if (senderError) {
+      console.error("Error fetching sender's conversations:", senderError);
+      throw new Error(senderError.message);
+    }
+
+    console.log("Sender's conversations fetched successfully:", senderConversations); // Debugging sender conversations
 
     const { data: recipientConversations, error: recipientError } = await supabase
       .from('conversation_members')
       .select('conversation_id')
       .eq('user_id', recipientId);
 
-    if (recipientError) throw new Error(recipientError.message);
+    if (recipientError) {
+      console.error("Error fetching recipient's conversations:", recipientError);
+      throw new Error(recipientError.message);
+    }
+
+    console.log("Recipient's conversations fetched successfully:", recipientConversations); // Debugging recipient conversations
 
     const existingConversation = senderConversations.find((sc) =>
       recipientConversations.some((rc) => rc.conversation_id === sc.conversation_id)
     );
 
     if (existingConversation) {
-      // Conversation already exists
+      console.log("Existing conversation found:", existingConversation); // Debugging existing conversation
       return res.status(200).json({ conversationId: existingConversation.conversation_id });
     }
 
@@ -132,21 +176,26 @@ export const createOrFetchConversation = async (req, res) => {
       .insert({ created_by: senderId })
       .select();
 
-    if (createError) throw new Error(createError.message);
-
-    if (!newConversation || newConversation.length === 0) {
-      throw new Error("Failed to create a new conversation.");
+    if (createError) {
+      console.error("Error creating new conversation:", createError);
+      throw new Error(createError.message);
     }
+
+    console.log("New conversation created successfully:", newConversation); // Debugging new conversation
 
     const conversationId = newConversation[0].id;
 
-    // Add both users to the conversation
     const { error: memberError } = await supabase.from('conversation_members').insert([
       { conversation_id: conversationId, user_id: senderId },
       { conversation_id: conversationId, user_id: recipientId },
     ]);
 
-    if (memberError) throw new Error(memberError.message);
+    if (memberError) {
+      console.error("Error adding members to conversation:", memberError);
+      throw new Error(memberError.message);
+    }
+
+    console.log("Members added to conversation successfully."); // Debugging member addition
 
     res.status(201).json({ conversationId });
   } catch (error) {

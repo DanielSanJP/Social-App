@@ -10,8 +10,18 @@ const PORT = process.env.PORT || 5000;
 
 // Use environment variables for CORS origin
 const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
-app.use(cors({ origin: corsOrigin })); // Replace 3000 with your frontend port
+app.use(cors({
+  origin: corsOrigin,
+  credentials: true, // Allow credentials (cookies)
+}));
+
 app.use(express.json()); // Middleware to parse JSON bodies
+
+// Handle preflight requests
+app.options("*", cors({
+  origin: corsOrigin,
+  credentials: true,
+}));
 
 // Mount the authRoutes at /api/auth
 app.use('/api/auth', authRoutes);  // This ensures the route prefix is correct

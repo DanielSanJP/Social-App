@@ -1,64 +1,114 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom"; // Import useParams to get conversationId from URL
+import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import "../styles/Messages.css"; // Ensure styles are applied
+import Cookies from "js-cookie";
+import { useUser } from "../contexts/UserContext";
+import "../styles/Messages.css";
 
 const Messages = ({ onSelectConversation }) => {
   const [conversations, setConversations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useUser();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchConversations = async () => {
       try {
-        const token = localStorage.getItem("authToken");
-        if (!token) {
-          alert("Your session has expired. Please log in again.");
+        setLoading(true);
+        const authToken = Cookies.get("authToken");
+
+        if (!authToken) {
+          console.error("No authentication token found");
+          setLoading(false);
           return;
         }
 
-        console.log("Authorization Token:", token); // Debugging
+        const response = await axios.get(
+          "http://localhost:5000/api/messages/conversations",
+          {
+            withCredentials: true,
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${authToken}`,
+            },
+          }
+        );
 
-        const response = await axios.get("/api/messages/conversations", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        console.log("Fetched Conversations:", response.data); // Debugging
-        setConversations(response.data);
+        console.log("Fetched Conversations:", response.data);
+        setConversations(response.data || []);
       } catch (error) {
-        if (error.response && error.response.status === 401) {
-          alert("Your session has expired. Please log in again.");
-          localStorage.removeItem("authToken");
+        if (error.response && error.response.status === 404) {
+          console.warn("No conversations found.");
+          setConversations([]); // Set conversations to an empty array
         } else {
           console.error("Error fetching conversations:", error);
         }
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchConversations();
-  }, []);
+    // Only fetch if user is logged in
+    if (user) {
+      fetchConversations();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
+
+  const handleSelectConversation = (conversation) => {
+    if (onSelectConversation) {
+      onSelectConversation(conversation);
+    } else {
+      // Default behavior if no onSelectConversation provided
+      navigate(`/chat/${conversation.conversation_id}`);
+    }
+  };
+
+  if (loading) {
+    return <div className="loading-spinner">Loading conversations...</div>;
+  }
 
   return (
-    <div className="messages-list">
-      <h2>Conversations</h2>
-      <ul>
-        {conversations.map((conversation) => (
-          <li
-            key={conversation.conversation_id}
-            onClick={() => onSelectConversation(conversation)}
-            className="conversation-item"
-          >
-            <img
-              src={
-                conversation.users.profile_pic_url ||
-                "https://via.placeholder.com/50"
-              }
-              alt={conversation.users.username || "User"}
-              className="conversation-profile-pic"
-            />
-            <span className="conversation-username">
-              {conversation.users.username || "Unknown User"}
-            </span>
-          </li>
-        ))}
-      </ul>
+    <div className="messages-container">
+      <h2>Your Conversations</h2>
+      <div className="messages-list">
+        {conversations.length === 0 ? (
+          <p className="no-conversations">
+            No conversations found. Start a new chat!
+          </p>
+        ) : (
+          <ul className="conversation-list">
+            {conversations.map((conversation) => (
+              <li
+                key={conversation.conversation_id}
+                onClick={() => handleSelectConversation(conversation)}
+                className="conversation-item"
+              >
+                <img
+                  src={
+                    conversation.users?.profile_pic_url ||
+                    "https://via.placeholder.com/50"
+                  }
+                  alt={conversation.users?.username || "User"}
+                  className="conversation-profile-pic"
+                />
+                <div className="conversation-details">
+                  <span className="conversation-username">
+                    {conversation.users?.username || "Unknown User"}
+                  </span>
+                  {conversation.last_message && (
+                    <span className="conversation-preview">
+                      {conversation.last_message.substring(0, 30)}
+                      {conversation.last_message.length > 30 ? "..." : ""}
+                    </span>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 };
@@ -67,19 +117,22 @@ const Chat = () => {
   const { conversationId } = useParams(); // Get conversationId from URL
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
+  const { user } = useUser(); // Get current user from context
 
   useEffect(() => {
     if (conversationId) {
       const fetchMessages = async () => {
         try {
-          const token = localStorage.getItem("authToken"); // Use the correct key
+          const token = Cookies.get("authToken"); // Use cookies for authentication
           console.log("Authorization Token:", token); // Debugging
 
           const response = await axios.get(
-            `/api/messages/${conversationId}/messages`,
+            `http://localhost:5000/api/messages/${conversationId}/messages`,
             {
+              withCredentials: true,
               headers: {
                 Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
               },
             }
           );
@@ -96,19 +149,25 @@ const Chat = () => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
+    if (!newMessage.trim()) return; // Don't send empty messages
+
     try {
-      const token = localStorage.getItem("authToken"); // Use the correct key
+      const token = Cookies.get("authToken"); // Use cookies for authentication
       console.log("Authorization Token:", token); // Debugging
 
       const response = await axios.post(
-        `/api/messages/${conversationId}/messages`,
+        `http://localhost:5000/api/messages/${conversationId}/messages`,
         { content: newMessage },
         {
-          headers: { Authorization: `Bearer ${token}` },
+          withCredentials: true,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
       );
       console.log("Message Sent Response:", response.data); // Debugging
-      setMessages((prevMessages) => [...prevMessages, response.data[0]]);
+      setMessages((prevMessages) => [...prevMessages, response.data]);
       setNewMessage("");
     } catch (error) {
       console.error("Error sending message:", error);
@@ -119,13 +178,16 @@ const Chat = () => {
     <div className="chat-box">
       <h2>Chat</h2>
       <div className="messages">
+        {messages.length === 0 && (
+          <div className="no-messages">
+            No messages yet. Start the conversation!
+          </div>
+        )}
         {messages.map((message) => (
           <div
             key={message.id}
             className={`message ${
-              message.sender_id === localStorage.getItem("userId")
-                ? "sent"
-                : "received"
+              message.sender_id === user?.id ? "sent" : "received"
             }`}
           >
             {message.content}
@@ -146,4 +208,4 @@ const Chat = () => {
 };
 
 export { Messages, Chat };
-export default Messages; // Add this line to make Messages the default export
+export default Messages;

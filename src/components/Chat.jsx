@@ -1,41 +1,41 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom"; // Import useParams to get conversationId from URL
 import axios from "axios";
+import Cookies from "js-cookie"; // Import js-cookie
+import { useUser } from "../contexts/UserContext"; // Import useUser to get current user
 
 const Chat = () => {
   const { conversationId } = useParams(); // Get conversationId from URL
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
+  const { user } = useUser(); // Get current user from context
 
   useEffect(() => {
     if (conversationId) {
       const fetchMessages = async () => {
         try {
-          const token = localStorage.getItem("authToken");
-          if (!token) {
-            alert("Your session has expired. Please log in again.");
+          // Get token from cookie instead of localStorage
+          const authToken = Cookies.get("authToken");
+
+          if (!authToken) {
+            console.error("Authentication token not found");
             return;
           }
 
-          console.log("Authorization Token:", token); // Debugging
-
           const response = await axios.get(
-            `/api/messages/${conversationId}/messages`,
+            `http://localhost:5000/api/messages/${conversationId}/messages`,
             {
+              withCredentials: true, // Include cookies in the request
               headers: {
-                Authorization: `Bearer ${token}`,
+                Authorization: `Bearer ${authToken}`,
+                "Content-Type": "application/json",
               },
             }
           );
           console.log("Fetched Messages:", response.data); // Debugging
-          setMessages(response.data);
+          setMessages(response.data); // Set all messages in the chatbox
         } catch (error) {
-          if (error.response && error.response.status === 401) {
-            alert("Your session has expired. Please log in again.");
-            localStorage.removeItem("authToken");
-          } else {
-            console.error("Error fetching messages:", error);
-          }
+          console.error("Error fetching messages:", error);
         }
       };
 
@@ -45,15 +45,26 @@ const Chat = () => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
+    if (!newMessage.trim()) return; // Don't send empty messages
+
     try {
-      const token = localStorage.getItem("authToken");
-      console.log("Authorization Token:", token);
+      // Get token from cookie instead of localStorage
+      const authToken = Cookies.get("authToken");
+
+      if (!authToken) {
+        console.error("Authentication token not found");
+        return;
+      }
 
       const response = await axios.post(
-        `/api/messages/${conversationId}/messages`,
+        `http://localhost:5000/api/messages/${conversationId}/messages`,
         { content: newMessage },
         {
-          headers: { Authorization: `Bearer ${token}` },
+          withCredentials: true, // Include cookies in the request
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
         }
       );
 
@@ -75,13 +86,16 @@ const Chat = () => {
     <div className="chat-box">
       <h2>Chat</h2>
       <div className="messages">
+        {messages.length === 0 && (
+          <div className="no-messages">
+            No messages yet. Start the conversation!
+          </div>
+        )}
         {messages.map((message) => (
           <div
             key={message.id}
             className={`message ${
-              message.sender_id === localStorage.getItem("userId")
-                ? "sent"
-                : "received"
+              message.sender_id === user?.id ? "sent" : "received"
             }`}
           >
             {message.content}

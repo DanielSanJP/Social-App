@@ -18,6 +18,7 @@ function Login() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
+        credentials: "include", // Include cookies in the request
       });
 
       const data = await response.json();
@@ -25,9 +26,6 @@ function Login() {
 
       console.log("Logged in user:", data.user);
       setUser(data.user); // Set the global user state
-
-      // Store the access token in localStorage
-      localStorage.setItem("authToken", data.access_token);
 
       // Redirect to the SocialFeed page
       navigate("/socialfeed");

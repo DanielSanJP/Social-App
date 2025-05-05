@@ -5,52 +5,47 @@ import React, {
   useEffect,
   useRef,
 } from "react";
+import Cookies from "js-cookie"; // Use js-cookie for reliable cookie handling
 
 // Create the UserContext
 const UserContext = createContext();
 
 // Create a provider component
 export const UserProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    // Load the user from localStorage when the app initializes
-    const savedUser = localStorage.getItem("user");
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
-
-  const hasFetchedUser = useRef(false); // Track if fetchUser has been called
-
-  useEffect(() => {
-    // Save the user to localStorage whenever it changes
-    if (user) {
-      localStorage.setItem("user", JSON.stringify(user));
-    } else {
-      localStorage.removeItem("user");
-    }
-  }, [user]);
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const hasFetchedUser = useRef(false);
+  const refreshAttempts = useRef(0); // Track refresh attempts to avoid infinite loops
 
   const refreshAuthToken = async () => {
-    try {
-      const refreshToken = localStorage.getItem("refreshToken");
-      if (!refreshToken) {
-        console.warn("No refresh token found. Cannot refresh auth token.");
-        return false;
-      }
+    // Prevent too many refresh attempts
+    if (refreshAttempts.current >= 3) {
+      console.error("Too many refresh attempts, aborting");
+      return false;
+    }
 
+    refreshAttempts.current += 1;
+
+    try {
+      console.log("Attempting to refresh auth token...");
       const response = await fetch("http://localhost:5000/api/auth/refresh", {
         method: "POST",
+        credentials: "include", // Include cookies in the request
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ refreshToken }),
       });
 
       if (!response.ok) {
-        console.error("Failed to refresh auth token.");
+        console.error(
+          "Failed to refresh auth token. Response status:",
+          response.status
+        );
         return false;
       }
 
       const data = await response.json();
-      localStorage.setItem("authToken", data.authToken);
+      console.log("Auth token refreshed successfully:", data.message);
       return true;
     } catch (error) {
       console.error("Error refreshing auth token:", error);
@@ -58,64 +53,113 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        let token = localStorage.getItem("authToken");
+  const fetchUser = async () => {
+    try {
+      setIsLoading(true);
+      console.log("Document cookies (debug):", document.cookie);
 
-        if (!token) {
-          console.log("No authentication token found. Skipping user fetch.");
-          return;
-        }
+      const authToken = Cookies.get("authToken");
 
-        console.log("Authorization Token:", token); // Debugging
+      if (!authToken) {
+        console.log("No authToken found in cookies. User is not logged in.");
+        setIsLoading(false);
+        return;
+      }
 
-        let response = await fetch("http://localhost:5000/api/auth/user", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+      console.log("AuthToken found:", authToken);
 
-        console.log("Fetch User Response Status:", response.status); // Debugging
+      // Make request with explicit headers
+      const response = await fetch("http://localhost:5000/api/auth/user", {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
 
-        if (response.status === 401) {
-          console.warn("Unauthorized. Attempting to refresh token.");
-          const refreshed = await refreshAuthToken();
-          if (refreshed) {
-            token = localStorage.getItem("authToken");
-            response = await fetch("http://localhost:5000/api/auth/user", {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            });
+      if (response.status === 401) {
+        console.warn("Unauthorized. Attempting to refresh token.");
+        const refreshed = await refreshAuthToken();
+
+        if (refreshed) {
+          // Reset the count for next time
+          refreshAttempts.current = 0;
+
+          // Try once more with the new token
+          const newAuthToken = Cookies.get("authToken");
+          if (newAuthToken) {
+            const retryResponse = await fetch(
+              "http://localhost:5000/api/auth/user",
+              {
+                method: "GET",
+                credentials: "include",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${newAuthToken}`,
+                },
+              }
+            );
+
+            if (retryResponse.ok) {
+              const data = await retryResponse.json();
+              console.log(
+                "User data fetched successfully after token refresh:",
+                data
+              );
+              setUser({
+                username: data.username,
+                profilePicture: data.profile_pic_url,
+              });
+              setIsLoading(false);
+              return;
+            } else {
+              console.error(
+                "Failed to fetch user data after token refresh. Status:",
+                retryResponse.status
+              );
+            }
           }
         }
 
-        if (response.status === 401) {
-          console.warn(
-            "Unauthorized after refresh attempt. Clearing token and resetting user state."
-          );
-          alert("Your session has expired. Please log in again.");
-          localStorage.removeItem("authToken");
-          localStorage.removeItem("refreshToken");
-          setUser(null);
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch user data");
-        }
-
-        const data = await response.json();
-        setUser({
-          username: data.username,
-          profilePicture: data.profile_pic_url,
-        });
-      } catch (error) {
-        console.error("Error fetching user:", error);
+        console.error(
+          "Token refresh failed or retry failed. Cannot fetch user."
+        );
+        setIsLoading(false);
+        return;
       }
-    };
 
+      if (!response.ok) {
+        console.error(
+          "Failed to fetch user data. Response status:",
+          response.status
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      console.log("Fetched user data:", data);
+      setUser({
+        username: data.username,
+        profilePicture: data.profile_pic_url,
+      });
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      setIsLoading(false);
+    }
+  };
+
+  const logout = () => {
+    // Clear the auth token cookie
+    Cookies.remove("authToken");
+    Cookies.remove("refreshToken");
+    // Reset user state
+    setUser(null);
+  };
+
+  useEffect(() => {
     if (!hasFetchedUser.current) {
       hasFetchedUser.current = true;
       fetchUser();
@@ -127,7 +171,9 @@ export const UserProvider = ({ children }) => {
   };
 
   return (
-    <UserContext.Provider value={{ user, setUser, updateUser }}>
+    <UserContext.Provider
+      value={{ user, setUser, updateUser, isLoading, logout }}
+    >
       {children}
     </UserContext.Provider>
   );

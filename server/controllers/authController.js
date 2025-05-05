@@ -1,5 +1,6 @@
 import { supabase } from '../supabaseClient.js';
 import { v4 as uuidv4 } from 'uuid'; // For generating unique file names
+import cookie from 'cookie'; // Import cookie library
 
 // Sign-Up function
 async function signUp(req, res) {
@@ -94,7 +95,7 @@ async function logIn(req, res) {
       .from('users')
       .select('username, profile_pic_url')
       .eq('id', user.id)
-      .single(); // Use .single() to ensure exactly one row is returned
+      .single();
 
     console.log("User data fetched from 'users' table:", userData);
     console.log("Error fetching user data:", userError);
@@ -106,14 +107,30 @@ async function logIn(req, res) {
       return res.status(400).json({ error: "Error fetching user data." });
     }
 
-    // Include the access_token in the response
+    // Set both the access token and refresh token as cookies
+    res.setHeader('Set-Cookie', [
+      cookie.serialize('authToken', data.session.access_token, {
+        httpOnly: false, // Allow client-side access for debugging
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // Use lax for development
+        maxAge: 60 * 60 * 24, // 1 day
+        path: '/',
+      }),
+      cookie.serialize('refreshToken', data.session.refresh_token, {
+        httpOnly: true, // Keep refresh token secure
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+        path: '/',
+      })
+    ]);
+
     res.status(200).json({
       user: {
         ...user,
         username: userData.username,
         profile_pic_url: userData.profile_pic_url,
       },
-      access_token: data.session.access_token, // Add the access token
     });
   } catch (err) {
     console.error("Login error:", err);
@@ -171,13 +188,17 @@ async function getUserData(userId) {
 
 // Get User function
 export const getUser = async (req, res) => {
-  try {
-    const userId = req.user?.id; // Assuming middleware attaches the user ID
-    console.log("Authenticated user:", req.user); // Debugging
-    if (!userId) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+  console.log("Authenticated user in getUser:", req.user); // Debugging req.user
 
+  const userId = req.user?.id; // Assuming middleware attaches the user ID
+  console.log("Authenticated user:", req.user); // Debugging
+  
+  if (!userId) {
+    console.warn("No userId found in req.user. Returning unauthorized.");
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  try {
     const { data, error } = await supabase
       .from("users")
       .select("username, profile_pic_url")
@@ -185,12 +206,77 @@ export const getUser = async (req, res) => {
       .single();
 
     if (error) {
+      console.error("Error fetching user data from Supabase:", error);
       return res.status(400).json({ error: error.message });
     }
 
+    console.log("User data fetched successfully:", data); // Debugging user data
+
     res.status(200).json(data);
   } catch (err) {
-    console.error("Error fetching user:", err);
+    console.error("Unexpected error in getUser:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// Refresh Token function
+export const refreshAuthToken = async (req, res) => {
+  try {
+    // Get refresh token from cookies
+    const cookies = cookie.parse(req.headers.cookie || '');
+    const refreshToken = cookies.refreshToken;
+    
+    console.log("Processing refresh token request");
+    
+    if (!refreshToken) {
+      console.warn("No refresh token found in cookies");
+      return res.status(401).json({ error: "No refresh token provided" });
+    }
+    
+    // Try to refresh the session with Supabase
+    const { data, error } = await supabase.auth.refreshSession({ 
+      refresh_token: refreshToken 
+    });
+    
+    if (error) {
+      console.error("Error refreshing token with Supabase:", error.message);
+      return res.status(401).json({ error: "Invalid or expired refresh token" });
+    }
+    
+    if (!data || !data.session) {
+      console.error("No session data returned when refreshing token");
+      return res.status(401).json({ error: "Failed to refresh session" });
+    }
+    
+    console.log("Token refreshed successfully");
+    
+    // Set the new access token and refresh token as cookies
+    res.setHeader('Set-Cookie', [
+      cookie.serialize('authToken', data.session.access_token, {
+        httpOnly: false, // Frontend needs to access this
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24, // 1 day
+        path: '/',
+      }),
+      cookie.serialize('refreshToken', data.session.refresh_token, {
+        httpOnly: true, // More secure
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+        path: '/',
+      })
+    ]);
+    
+    res.status(200).json({ 
+      message: "Token refreshed successfully",
+      user: data.user ? {
+        id: data.user.id,
+        email: data.user.email
+      } : null
+    });
+  } catch (err) {
+    console.error("Unexpected error during token refresh:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 };
