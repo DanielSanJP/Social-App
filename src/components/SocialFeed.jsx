@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom"; // Import useNavigate
 import { formatDistance } from "date-fns";
+import { FaHeart, FaRegHeart, FaRegComment } from "react-icons/fa"; // Import heart icons
+import "../styles/Feed.css"; // Import CSS for styling
 
 const SocialFeed = () => {
   const [posts, setPosts] = useState([]);
@@ -14,17 +16,15 @@ const SocialFeed = () => {
         const response = await fetch("http://localhost:5000/api/posts", {
           credentials: "include", // Include cookies in the request
         });
-        console.log("Response status:", response.status);
-        console.log("Response headers:", response.headers);
 
         if (!response.ok) {
           throw new Error("Failed to fetch posts");
         }
 
         const data = await response.json();
-        console.log("Fetched posts data:", data);
 
-        setPosts(data); // Directly set posts with the liked flag from the backend
+        // Ensure the `liked` status is fetched and set
+        setPosts(data);
       } catch (err) {
         console.error("Error fetching posts:", err.message);
         setError(err.message);
@@ -74,86 +74,64 @@ const SocialFeed = () => {
   }
 
   return (
-    <div>
-      <h2>Social Feed</h2>
+    <div className="social-feed">
       {posts.length === 0 ? (
         <p>No posts available.</p>
       ) : (
-        <div>
+        <div className="posts-container">
           {posts.map((post) => (
-            <div
-              key={post.id}
-              style={{
-                marginBottom: "20px",
-                border: "1px solid #ccc",
-                padding: "10px",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "20px",
-                }}
-              >
-                <div
-                  style={{
-                    display: "inline-block",
-                    position: "relative",
-                    width: "80px",
-                    height: "80px",
-                    overflow: "hidden",
-                    borderRadius: "50%", // Makes the container circular
-                  }}
-                >
+            <div className="post" key={post.id}>
+              <div className="user-info">
+                <div className="profile-pic-container">
                   <img
-                    src={post.profile_pic_url}
+                    className="profile-pic"
+                    src={post.users?.profile_pic_url} // Access profile_pic_url from the nested users field
                     alt="ProfilePIC"
-                    style={{
-                      width: "100%", // Ensures the image covers the container
-                      height: "100%",
-                      objectFit: "cover", // Ensures the image scales and crops to fit the circle
-                    }}
                   />
                 </div>
-                <h3>{post.username}</h3>
+                <h3 className="post-username">{post.users?.username}</h3>
               </div>
               {post.image_url && (
                 <img
+                  className="feed-post-image"
                   src={post.image_url}
                   alt="Post"
-                  style={{
-                    maxWidth: "350px",
-                    height: "auto",
-                    marginBottom: "10px",
-                  }}
                 />
               )}
-              <p>
-                <strong>{post.username} </strong>
-                {post.description}
-              </p>
-              <p>
-                <small>
-                  {formatDistance(new Date(post.created_at), new Date(), {
-                    addSuffix: true,
-                  })}
-                </small>
-              </p>
-              <p>Likes: {post.likes}</p>
-              <button
-                onClick={() => handleToggleLike(post.id)}
-                style={{
-                  backgroundColor: post.liked ? "magenta" : "white", // Magenta if liked, white otherwise
-                  color: post.liked ? "white" : "black", // Adjust text color for contrast
-                  border: "1px solid #ccc",
-                  padding: "5px 10px",
-                  cursor: "pointer",
-                }}
-              >
-                {post.liked ? "Liked" : "Like"}
-              </button>
+              <div className="post-description">
+                <div className="post-actions">
+                  <button
+                    className="action-button"
+                    onClick={() => handleToggleLike(post.id)}
+                    style={{
+                      backgroundColor: "transparent", // Transparent background
+                      border: "none", // Remove border
+                      cursor: "pointer", // Pointer cursor for better UX
+                    }}
+                  >
+                    {post.liked ? (
+                      <FaHeart style={{ color: "#FF3040" }} />
+                    ) : (
+                      <FaRegHeart />
+                    )}
+                  </button>
+                  <button className="action-button">
+                    <FaRegComment />
+                  </button>
+                </div>
+                <p>
+                  <strong>{post.users?.username} </strong>
+                  {post.description}
+                </p>
+                <p>
+                  <small>
+                    {formatDistance(new Date(post.created_at), new Date(), {
+                      addSuffix: true,
+                    })}
+                  </small>
+                </p>
+                {/* <p>Likes: {post.likes}</p> */}
+              </div>
             </div>
           ))}
         </div>

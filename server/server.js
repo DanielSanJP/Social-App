@@ -3,6 +3,7 @@ import authRoutes from './routes/authRoutes.js';  // Ensure this import path is 
 import postRoutes from "./routes/postRoutes.js"; // Import the posts routes
 import userRoutes from "./routes/userRoutes.js"; // Import the users routes
 import messagesRoutes from "./routes/messagesRoutes.js"; // Import the messages routes
+import followRoutes from "./routes/followRoutes.js"; // Import the follow routes
 import cors from "cors";
 
 const app = express();
@@ -34,6 +35,9 @@ app.use("/api/users", userRoutes);
 
 // Mount the messages routes at /api/messages
 app.use("/api/messages", messagesRoutes); // Add this line to include messages routes
+
+// Mount the follow routes at /api/follows
+app.use("/api/follows", followRoutes);
 
 // Middleware to log the Auth User ID for debugging
 app.use((req, res, next) => {

@@ -201,7 +201,7 @@ export const getUser = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("users")
-      .select("username, profile_pic_url")
+      .select("id, username, profile_pic_url") // Include id in the selection
       .eq("id", userId)
       .single();
 
@@ -212,7 +212,11 @@ export const getUser = async (req, res) => {
 
     console.log("User data fetched successfully:", data); // Debugging user data
 
-    res.status(200).json(data);
+    res.status(200).json({
+      id: data.id, // Explicitly include the ID in the response
+      username: data.username,
+      profile_pic_url: data.profile_pic_url
+    });
   } catch (err) {
     console.error("Unexpected error in getUser:", err);
     res.status(500).json({ error: "Internal server error" });

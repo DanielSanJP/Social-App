@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import "../styles/CreatePost.css";
+import Cookies from "js-cookie"; // Import the js-cookie library
 
 const CreatePost = ({ userId }) => {
   const [image, setImage] = useState(null);
   const [description, setDescription] = useState("");
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   const handleImageChange = (e) => {
     setImage(e.target.files[0]);
@@ -12,6 +14,10 @@ const CreatePost = ({ userId }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Clear previous messages
+    setError(null);
+    setSuccessMessage(null);
 
     if (!image || !description) {
       setError("Please provide both an image and a description.");
@@ -23,7 +29,13 @@ const CreatePost = ({ userId }) => {
     formData.append("description", description);
     formData.append("user_id", userId);
 
-    const token = localStorage.getItem("authToken"); // Retrieve the token from localStorage
+    // Get the token from cookies instead of localStorage
+    const token = Cookies.get("authToken");
+
+    if (!token) {
+      setError("Authentication token not found. Please log in again.");
+      return;
+    }
 
     try {
       const response = await fetch("http://localhost:5000/api/posts", {
@@ -31,6 +43,7 @@ const CreatePost = ({ userId }) => {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        credentials: "include", // Include cookies in the request
         body: formData,
       });
 
@@ -38,10 +51,13 @@ const CreatePost = ({ userId }) => {
         throw new Error("Failed to create post");
       }
 
-      alert("Post created successfully!");
+      // Show success message in a paragraph instead of an alert
+      setSuccessMessage("Post created successfully!");
+      // Reset form
       setImage(null);
       setDescription("");
-      setError(null);
+      // Reset the file input by clearing its value
+      document.querySelector('input[type="file"]').value = "";
     } catch (err) {
       setError(err.message);
     }
@@ -51,6 +67,7 @@ const CreatePost = ({ userId }) => {
     <div className="create-post">
       <h2>Create a Post</h2>
       {error && <p className="error">{error}</p>}
+      {successMessage && <p className="success-message">{successMessage}</p>}
       <form onSubmit={handleSubmit}>
         <input type="file" accept="image/*" onChange={handleImageChange} />
         <textarea

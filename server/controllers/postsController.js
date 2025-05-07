@@ -17,12 +17,12 @@ const upload = multer({ storage });
 
 // Refactor getAllPosts to include pagination
 export const getAllPosts = async (req, res) => {
-  const { page = 1, limit = 10 } = req.query;
-  const offset = (page - 1) * limit;
-  const userId = req.user?.id; // Get the authenticated user's ID
+  const { userId } = req.query; // Get userId from query params
+  const currentUserId = req.user?.id;
 
   try {
-    const { data, error } = await supabase
+    // Get all posts without pagination limits and without filtering by likes
+    let query = supabase
       .from("posts")
       .select(`
         id,
@@ -38,30 +38,52 @@ export const getAllPosts = async (req, res) => {
           profile_pic_url
         )
       `)
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+      .order("created_at", { ascending: false });
 
-    if (error) throw error;
+    // Only filter by userId if it was specifically provided
+    if (userId) {
+      query = query.eq("user_id", userId);
+    }
 
-    // Fetch likes for the current user
-    const { data: likedPosts, error: likesError } = await supabase
+    const { data: posts, error: postsError } = await query;
+
+    if (postsError) {
+      console.error("Supabase posts query error:", postsError);
+      throw postsError;
+    }
+
+    // Log the number of posts retrieved to help debug
+    console.log(`Retrieved ${posts?.length || 0} posts from database`);
+
+    if (!currentUserId || !posts || posts.length === 0) {
+      // If no user is authenticated or no posts, return posts without liked status
+      return res.status(200).json(posts || []);
+    }
+
+    // Get all likes for the current user
+    const { data: userLikes, error: likesError } = await supabase
       .from("likes")
       .select("post_id")
-      .eq("user_id", userId);
+      .eq("user_id", currentUserId);
 
-    if (likesError) throw likesError;
+    if (likesError) {
+      console.error("Supabase likes query error:", likesError);
+      throw likesError;
+    }
 
-    const likedPostIds = likedPosts.map((like) => like.post_id);
+    // Create a Set of post IDs that the user has liked for efficient lookup
+    const likedPostIds = new Set(userLikes?.map(like => like.post_id) || []);
 
-    // Map the posts to include the username, profile picture, and liked flag
-    const postsWithUserDetails = data.map((post) => ({
+    // Add liked status to each post
+    const postsWithLikedStatus = posts.map(post => ({
       ...post,
-      username: post.users?.username || "Unknown User",
-      profile_pic_url: post.users?.profile_pic_url || null,
-      liked: likedPostIds.includes(post.id), // Add liked flag
+      liked: likedPostIds.has(post.id)
     }));
 
-    res.status(200).json(postsWithUserDetails);
+    // Log the number of posts being returned
+    console.log(`Returning ${postsWithLikedStatus.length} posts with liked status`);
+
+    res.status(200).json(postsWithLikedStatus);
   } catch (err) {
     console.error("Error fetching posts:", err.message);
     res.status(500).json({ error: "Failed to fetch posts" });
@@ -74,14 +96,21 @@ export const createPost = async (req, res) => {
     const { description } = req.body;
     const user_id = req.user?.id;
 
-    if (!description || !user_id) {
-      return res.status(400).json({ error: "Missing required fields" });
+    if (!user_id) {
+      return res.status(401).json({ error: "User not authenticated" });
+    }
+
+    if (!description) {
+      return res.status(400).json({ error: "Description is required" });
     }
 
     const file = req.file;
     if (!file) {
-      return res.status(400).json({ error: "Missing required fields" });
+      return res.status(400).json({ error: "Image is required" });
     }
+
+    console.log("Processing file upload:", file);
+    console.log("User ID:", user_id);
 
     const fileName = `${Date.now()}-${file.originalname}`;
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -259,83 +288,57 @@ export const toggleLike = async (req, res) => {
       throw likeError;
     }
 
+    // Get the current post to read its likes count
+    const { data: currentPost, error: postError } = await supabase
+      .from("posts")
+      .select("likes")
+      .eq("id", postId)
+      .single();
+      
+    if (postError) {
+      console.error("Error fetching current post:", postError);
+      throw postError;
+    }
+    
     let updatedPost;
     if (like) {
       // User has already liked the post, so remove the like
-      const { error: deleteError } = await supabase
+      await supabase
         .from("likes")
         .delete()
         .eq("user_id", userId)
         .eq("post_id", postId);
 
-      if (deleteError) {
-        console.error("Error removing like:", deleteError);
-        throw deleteError;
-      }
-
-      // Decrement the likes count
-      const { data: post, error: fetchError } = await supabase
-        .from("posts")
-        .select("likes")
-        .eq("id", postId)
-        .single();
-
-      if (fetchError) {
-        console.error("Error fetching post likes count:", fetchError);
-        throw fetchError;
-      }
-
-      const updatedLikes = Math.max(0, post.likes - 1);
-
+      // Calculate new likes count (decrement)
+      const newLikesCount = Math.max(0, (currentPost.likes || 0) - 1); // Prevent negative likes
+      
       const { data, error: updateError } = await supabase
         .from("posts")
-        .update({ likes: updatedLikes })
+        .update({ likes: newLikesCount })
         .eq("id", postId)
         .select()
         .single();
 
-      if (updateError) {
-        console.error("Error decrementing likes count:", updateError);
-        throw updateError;
-      }
+      if (updateError) throw updateError;
 
       updatedPost = { ...data, liked: false };
     } else {
       // User has not liked the post, so add a like
-      const { error: insertError } = await supabase
+      await supabase
         .from("likes")
         .insert([{ user_id: userId, post_id: postId }]);
 
-      if (insertError) {
-        console.error("Error adding like:", insertError);
-        throw insertError;
-      }
-
-      // Increment the likes count
-      const { data: post, error: fetchError } = await supabase
-        .from("posts")
-        .select("likes")
-        .eq("id", postId)
-        .single();
-
-      if (fetchError) {
-        console.error("Error fetching post likes count:", fetchError);
-        throw fetchError;
-      }
-
-      const updatedLikes = post.likes + 1;
-
+      // Calculate new likes count (increment)
+      const newLikesCount = (currentPost.likes || 0) + 1;
+      
       const { data, error: updateError } = await supabase
         .from("posts")
-        .update({ likes: updatedLikes })
+        .update({ likes: newLikesCount })
         .eq("id", postId)
         .select()
         .single();
 
-      if (updateError) {
-        console.error("Error incrementing likes count:", updateError);
-        throw updateError;
-      }
+      if (updateError) throw updateError;
 
       updatedPost = { ...data, liked: true };
     }

@@ -107,19 +107,35 @@ export const UserProvider = ({ children }) => {
                 "User data fetched successfully after token refresh:",
                 data
               );
-              setUser({
-                username: data.username,
-                profilePicture: data.profile_pic_url,
-              });
-              setIsLoading(false);
-              return;
+
+              // Make sure we get the complete user data including profile picture URL
+              if (data && data.id) {
+                // Store user ID along with username and profile picture
+                setUser({
+                  id: data.id,
+                  username: data.username,
+                  profilePicture: data.profile_pic_url, // Store profile_pic_url as profilePicture
+                  profile_pic_url: data.profile_pic_url, // Also store the original name for consistency
+                });
+                console.log(
+                  "User data set with profile picture:",
+                  data.profile_pic_url
+                );
+                setIsLoading(false);
+                return;
+              }
             } else {
               console.error(
                 "Failed to fetch user data after token refresh. Status:",
                 retryResponse.status
               );
+              // Clear invalid tokens and set user to null
+              logout();
             }
           }
+        } else {
+          // Token refresh failed, clear cookies and user state
+          logout();
         }
 
         console.error(
@@ -134,19 +150,36 @@ export const UserProvider = ({ children }) => {
           "Failed to fetch user data. Response status:",
           response.status
         );
+        // Clear tokens if we get a non-200 response
+        logout();
         setIsLoading(false);
         return;
       }
 
       const data = await response.json();
       console.log("Fetched user data:", data);
+
+      // Check if we have valid user data with an ID
+      if (!data || !data.id) {
+        console.error("Invalid user data returned from API:", data);
+        logout();
+        setIsLoading(false);
+        return;
+      }
+
+      // Store user ID along with username and profile picture
       setUser({
+        id: data.id,
         username: data.username,
-        profilePicture: data.profile_pic_url,
+        profilePicture: data.profile_pic_url, // Store profile_pic_url as profilePicture
+        profile_pic_url: data.profile_pic_url, // Also store the original name for consistency
       });
+      console.log("User data set with profile picture:", data.profile_pic_url);
       setIsLoading(false);
     } catch (error) {
       console.error("Error fetching user:", error);
+      // Clear tokens on any error
+      logout();
       setIsLoading(false);
     }
   };

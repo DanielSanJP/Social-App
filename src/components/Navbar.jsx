@@ -2,13 +2,11 @@ import { Link, useNavigate } from "react-router-dom"; // Import useNavigate
 import { useUser } from "../contexts/UserContext";
 
 function Navbar() {
-  const { user, setUser } = useUser();
+  const { user, logout } = useUser(); // Get logout function from UserContext
   const navigate = useNavigate(); // Initialize useNavigate
 
   const handleSignOut = () => {
-    setUser(null); // Clear the user from context
-    localStorage.removeItem("user"); // Clear user from localStorage
-    localStorage.removeItem("authToken"); // Clear auth token from localStorage
+    logout(); // Use the logout function from UserContext which properly clears cookies
     navigate("/login"); // Redirect to login page
   };
 

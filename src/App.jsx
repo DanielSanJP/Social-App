@@ -10,6 +10,8 @@ import CreatePost from "./components/CreatePost";
 import Search from "./components/Search";
 import Messages from "./components/Messages"; // Import Messages component
 import Chat from "./components/Chat"; // Import Chat component
+import UserPosts from "./components/UserPosts"; // Import UserPosts component
+import PostView from "./components/PostView"; // Import PostView component
 import "./styles/App.css";
 
 const AppContent = () => {
@@ -33,7 +35,14 @@ const AppContent = () => {
             </ProtectedRoute>
           }
         />
-        <Route path="/createpost" element={<CreatePost />} />
+        <Route
+          path="/createpost"
+          element={
+            <ProtectedRoute>
+              <CreatePost userId={user?.id} />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route
@@ -54,6 +63,24 @@ const AppContent = () => {
           element={
             <ProtectedRoute>
               <Chat />
+            </ProtectedRoute>
+          }
+        />
+        {/* Add route for UserPosts */}
+        <Route
+          path="/user/:userId/posts"
+          element={
+            <ProtectedRoute>
+              <UserPosts />
+            </ProtectedRoute>
+          }
+        />
+        {/* Add route for PostView */}
+        <Route
+          path="/post/:postId"
+          element={
+            <ProtectedRoute>
+              <PostView />
             </ProtectedRoute>
           }
         />

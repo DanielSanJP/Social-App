@@ -25,7 +25,12 @@ function Login() {
       if (!response.ok) throw new Error(data.error);
 
       console.log("Logged in user:", data.user);
-      setUser(data.user); // Set the global user state
+
+      // Store both naming conventions for the profile picture
+      setUser({
+        ...data.user,
+        profilePicture: data.user.profile_pic_url,
+      });
 
       // Redirect to the SocialFeed page
       navigate("/socialfeed");
@@ -36,38 +41,25 @@ function Login() {
 
   return (
     <div>
-      {user ? (
-        <div>
-          <h2>Welcome, {user.username}!</h2>
-          {user.profile_pic_url && (
-            <img
-              src={user.profile_pic_url}
-              alt="Profile"
-              style={{ width: "100px", height: "100px", borderRadius: "50%" }}
-            />
-          )}
-        </div>
-      ) : (
-        <form onSubmit={handleLogin}>
-          <h2>Login</h2>
-          {error && <p style={{ color: "red" }}>{error}</p>}
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <button type="submit">Login</button>
-        </form>
-      )}
+      <form onSubmit={handleLogin}>
+        <h2>Login</h2>
+        {error && <p style={{ color: "red" }}>{error}</p>}
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+        <button type="submit">Login</button>
+      </form>
     </div>
   );
 }

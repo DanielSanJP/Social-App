@@ -1,16 +1,23 @@
-import React, { useEffect, useState } from "react";
-import { useParams, useLocation, useNavigate } from "react-router-dom"; // Added useLocation and useNavigate
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
-import Cookies from "js-cookie"; // Import js-cookie
-import { useUser } from "../contexts/UserContext"; // Import useUser to get current user
+import Cookies from "js-cookie";
+import { useUser } from "../contexts/UserContext";
+import "../styles/Chat.css";
 
 const Chat = () => {
-  const { conversationId } = useParams(); // Get conversationId from URL
-  const location = useLocation(); // Get location to access state
-  const navigate = useNavigate(); // Add navigate for redirection
+  const { conversationId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
-  const { user } = useUser(); // Get current user from context
+  const { user } = useUser();
+  const [otherUser, setOtherUser] = useState(null);
+  const messagesEndRef = useRef(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const intervalRef = useRef(null);
 
   // Function to refresh auth token if needed
   const refreshAuthToken = async () => {
@@ -33,86 +40,218 @@ const Chat = () => {
     }
   };
 
+  // Scroll to bottom of messages
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
   useEffect(() => {
-    if (conversationId) {
-      const fetchMessages = async () => {
-        try {
-          // Try to get token from navigation state first, then from cookie
-          let authToken = location.state?.authToken || Cookies.get("authToken");
+    scrollToBottom();
+  }, [messages]);
 
-          // Debug log all cookies
-          console.log("All cookies in Chat:", Cookies.get());
-          console.log("Auth token in Chat component:", authToken);
-          console.log("Location state in Chat:", location.state);
+  // Format date for displaying message timestamps
+  const formatMessageTime = (timestamp) => {
+    if (!timestamp) return "";
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
 
-          if (!authToken) {
-            console.error("Authentication token not found");
-            navigate("/login");
-            return;
+  // Fetch user details based on ID
+  const fetchUserDetails = async (userId, authToken) => {
+    try {
+      const userResponse = await axios.get(
+        `http://localhost:5000/api/users/${userId}`,
+        {
+          withCredentials: true,
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      return userResponse.data;
+    } catch (error) {
+      console.error("Error fetching user details:", error);
+      return null;
+    }
+  };
+
+  // Extract fetchMessages to a separate function that can be reused for initial load and refreshing
+  const fetchMessages = useCallback(
+    async (initial = false) => {
+      if (initial) setLoading(true);
+      else setRefreshing(true);
+
+      setError(null);
+
+      try {
+        // Try to get token from navigation state first, then from cookie
+        let authToken = location.state?.authToken || Cookies.get("authToken");
+
+        if (!authToken) {
+          console.error("Authentication token not found");
+          navigate("/login");
+          return;
+        }
+
+        if (initial) {
+          console.log(
+            `Fetching messages for conversation ID: ${conversationId}`
+          );
+        } else {
+          console.log(
+            `Refreshing messages for conversation ID: ${conversationId}`
+          );
+        }
+
+        // Use the correct endpoint based on your server routes
+        const messagesResponse = await axios.get(
+          `http://localhost:5000/api/messages/${conversationId}/messages`,
+          {
+            withCredentials: true,
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (Array.isArray(messagesResponse.data)) {
+          // Sort messages by created_at timestamp
+          const sortedMessages = messagesResponse.data.sort(
+            (a, b) => new Date(a.created_at) - new Date(b.created_at)
+          );
+
+          if (initial) {
+            // On initial load, just set all messages
+            setMessages(sortedMessages);
+          } else {
+            // When refreshing, only add new messages that we don't already have
+            setMessages((currentMessages) => {
+              // Create a set of existing message IDs for quick lookup
+              const existingIds = new Set(currentMessages.map((msg) => msg.id));
+
+              // Filter for only new messages
+              const newMessages = sortedMessages.filter(
+                (msg) => !existingIds.has(msg.id)
+              );
+
+              // If there are new messages, add them to the current messages
+              if (newMessages.length > 0) {
+                return [...currentMessages, ...newMessages];
+              }
+
+              // Otherwise return the current messages unchanged
+              return currentMessages;
+            });
           }
 
-          const response = await axios.get(
-            `http://localhost:5000/api/messages/${conversationId}/messages`,
-            {
-              withCredentials: true, // Include cookies in the request
-              headers: {
-                Authorization: `Bearer ${authToken}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
-          console.log("Fetched Messages:", response.data); // Debugging
-          setMessages(response.data); // Set all messages in the chatbox
-        } catch (error) {
-          console.error("Error fetching messages:", error);
+          // If we have messages and no other user info yet, fetch the other user details
+          if (sortedMessages.length > 0 && user && !otherUser) {
+            const firstMessage = sortedMessages[0];
+            const otherUserId =
+              firstMessage.sender_id === user.id
+                ? firstMessage.receiver_id
+                : firstMessage.sender_id;
 
-          // If unauthorized, try to refresh the token
-          if (error.response && error.response.status === 401) {
-            console.log("Token expired, attempting refresh...");
-            const refreshed = await refreshAuthToken();
-            if (refreshed) {
-              // Try again with the new token
-              const newAuthToken = Cookies.get("authToken");
-              if (newAuthToken) {
-                try {
-                  const retryResponse = await axios.get(
-                    `http://localhost:5000/api/messages/${conversationId}/messages`,
-                    {
-                      withCredentials: true,
-                      headers: {
-                        Authorization: `Bearer ${newAuthToken}`,
-                        "Content-Type": "application/json",
-                      },
-                    }
-                  );
-                  setMessages(retryResponse.data);
-                } catch (retryError) {
-                  console.error(
-                    "Retry failed after token refresh:",
-                    retryError
-                  );
-                  navigate("/login");
-                }
-              } else {
-                navigate("/login");
-              }
-            } else {
-              navigate("/login");
+            // Fetch other user details
+            const otherUserData = await fetchUserDetails(
+              otherUserId,
+              authToken
+            );
+            if (otherUserData) {
+              setOtherUser(otherUserData);
             }
+          }
+        } else {
+          if (initial) {
+            console.error(
+              "Expected array of messages but got:",
+              messagesResponse.data
+            );
+            setMessages([]);
           }
         }
-      };
+      } catch (error) {
+        console.error("Error fetching messages:", error);
 
-      fetchMessages();
+        if (initial) {
+          setError(
+            `Failed to load messages: ${error.response?.status} ${error.response?.statusText}`
+          );
+        }
+
+        // If unauthorized, try to refresh the token
+        if (error.response && error.response.status === 401) {
+          console.log("Token expired, attempting refresh...");
+          const refreshed = await refreshAuthToken();
+          if (refreshed) {
+            const newAuthToken = Cookies.get("authToken");
+            if (newAuthToken) {
+              try {
+                const retryResponse = await axios.get(
+                  `http://localhost:5000/api/messages/${conversationId}/messages`,
+                  {
+                    withCredentials: true,
+                    headers: {
+                      Authorization: `Bearer ${newAuthToken}`,
+                      "Content-Type": "application/json",
+                    },
+                  }
+                );
+                if (Array.isArray(retryResponse.data)) {
+                  if (initial) {
+                    setMessages(retryResponse.data);
+                    setError(null);
+                  }
+                }
+              } catch (retryError) {
+                console.error("Retry failed after token refresh:", retryError);
+                if (initial) {
+                  setError("Session expired. Please log in again.");
+                  navigate("/login");
+                }
+              }
+            } else {
+              if (initial) navigate("/login");
+            }
+          } else {
+            if (initial) navigate("/login");
+          }
+        }
+      } finally {
+        if (initial) setLoading(false);
+        else setRefreshing(false);
+      }
+    },
+    [conversationId, location.state, navigate, user, otherUser]
+  );
+
+  // Initial message fetch
+  useEffect(() => {
+    if (conversationId) {
+      fetchMessages(true);
+
+      // Set up the interval for refreshing messages
+      intervalRef.current = setInterval(() => {
+        fetchMessages(false);
+      }, 3000); // Refresh every 3 seconds
+
+      // Clean up interval when component unmounts
+      return () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
+      };
     }
-  }, [conversationId, location.state, navigate]);
+  }, [conversationId, fetchMessages]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim()) return; // Don't send empty messages
 
     try {
-      // Get token from location state first, then cookie as fallback
       const authToken = location.state?.authToken || Cookies.get("authToken");
 
       if (!authToken) {
@@ -121,19 +260,18 @@ const Chat = () => {
         return;
       }
 
+      // Use the correct endpoint for sending messages
       const response = await axios.post(
         `http://localhost:5000/api/messages/${conversationId}/messages`,
         { content: newMessage },
         {
-          withCredentials: true, // Include cookies in the request
+          withCredentials: true,
           headers: {
             Authorization: `Bearer ${authToken}`,
             "Content-Type": "application/json",
           },
         }
       );
-
-      console.log("Message Sent Response:", response.data);
 
       if (!response.data) {
         console.error("No message returned from the server.");
@@ -154,34 +292,92 @@ const Chat = () => {
     }
   };
 
+  // Function to generate placeholder avatar
+  const getInitials = (name) => {
+    if (!name) return "?";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
+  };
+
   return (
     <div className="chat-box">
-      <h2>Chat</h2>
+      <h2>{otherUser ? otherUser.username : "Chat"}</h2>
+      {error && <div className="error-message">{error}</div>}
       <div className="messages">
-        {messages.length === 0 && (
+        {loading ? (
+          <div className="loading-messages">Loading messages...</div>
+        ) : messages.length === 0 ? (
           <div className="no-messages">
             No messages yet. Start the conversation!
           </div>
+        ) : (
+          // Render messages with proper grouping
+          messages.map((message, index) => {
+            const isCurrentUser = message.sender_id === user?.id;
+            const showAvatar =
+              !isCurrentUser &&
+              (index === 0 ||
+                messages[index - 1].sender_id !== message.sender_id);
+
+            return (
+              <div
+                key={message.id || index}
+                className={`message ${isCurrentUser ? "sent" : "received"}`}
+              >
+                {showAvatar && !isCurrentUser && (
+                  <div className="message-avatar">
+                    {otherUser?.profile_pic_url ? (
+                      <img
+                        src={otherUser.profile_pic_url}
+                        alt={otherUser.username}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: "#E4E6EB",
+                          color: "#65676B",
+                        }}
+                      >
+                        {getInitials(otherUser?.username)}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className={isCurrentUser ? undefined : "message-content"}>
+                  {message.content}
+                  <span className="message-timestamp">
+                    {formatMessageTime(message.created_at)}
+                  </span>
+                </div>
+              </div>
+            );
+          })
         )}
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`message ${
-              message.sender_id === user?.id ? "sent" : "received"
-            }`}
-          >
-            {message.content}
+        <div ref={messagesEndRef} />
+        {refreshing && (
+          <div className="refresh-indicator">
+            <span>•</span>
           </div>
-        ))}
+        )}
       </div>
       <form onSubmit={handleSendMessage} className="message-form">
         <input
           type="text"
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
-          placeholder="Type a message..."
+          placeholder="Message..."
         />
-        <button type="submit">Send</button>
+        <button type="submit" disabled={!newMessage.trim()}>
+          Send
+        </button>
       </form>
     </div>
   );

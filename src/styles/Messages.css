@@ -12,7 +12,9 @@
 }
 
 .conversation-item:hover {
-  background-color: #f9f9f9;
+  color: cornflowerblue;
+  transform: scale(1.03);
+  transition: 0.3s;
 }
 
 .conversation-profile-pic {
