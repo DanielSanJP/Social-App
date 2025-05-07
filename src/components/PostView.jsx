@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useUser } from "../contexts/UserContext"; // Assuming you have a UserContext
 import "../styles/PostView.css"; // Import CSS for styling
 
 const PostView = () => {
   const { state: post } = useLocation(); // Get post data from navigation state
   const navigate = useNavigate();
+  const { user: loggedInUser } = useUser(); // Get logged-in user from context
   const [isEditing, setIsEditing] = useState(false);
   const [description, setDescription] = useState(post.description);
   const [user, setUser] = useState(null);
@@ -68,6 +70,8 @@ const PostView = () => {
     return <p>Loading user data...</p>;
   }
 
+  const isOwner = loggedInUser?.id === post.user_id; // Check if logged-in user is the owner
+
   return (
     <div className="post-view">
       <button onClick={() => navigate(-1)} className="close-button">
@@ -106,17 +110,19 @@ const PostView = () => {
           <p>{description}</p>
         </div>
       )}
-      <div className="post-view-buttons">
-        <button
-          onClick={() => setIsEditing(true)}
-          className="post-view-edit-button"
-        >
-          Edit
-        </button>
-        <button onClick={handleDelete} className="delete-button">
-          Delete
-        </button>
-      </div>
+      {isOwner && ( // Only show these buttons if the logged-in user is the owner
+        <div className="post-view-buttons">
+          <button
+            onClick={() => setIsEditing(true)}
+            className="post-view-edit-button"
+          >
+            Edit
+          </button>
+          <button onClick={handleDelete} className="delete-button">
+            Delete
+          </button>
+        </div>
+      )}
     </div>
   );
 };
