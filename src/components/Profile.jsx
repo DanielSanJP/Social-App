@@ -248,38 +248,47 @@ const Profile = () => {
 
   return (
     <div>
-      <h1>{profileData.username}</h1>
-      <img
-        src={profileData.profile_pic_url || "https://via.placeholder.com/150"}
-        alt={`${profileData.username || "User"}`}
-        style={{ width: "150px", height: "150px", borderRadius: "50%" }}
-      />
+      <div className="profile-header">
+        <img
+          src={profileData.profile_pic_url || "https://via.placeholder.com/150"}
+          alt={`${profileData.username || "User"}`}
+          style={{ width: "150px", height: "150px", borderRadius: "50%" }}
+        />
+        <div className="profile-details">
+          <h3>{profileData.username}</h3>
+
+          {userId === user?.id ? (
+            <button className="edit-button" onClick={() => setIsEditing(true)}>
+              Edit Profile
+            </button>
+          ) : (
+            <>
+              <button onClick={handleStartChat}>Message</button>
+              {isFollowing ? (
+                <button onClick={handleUnfollow}>Unfollow</button>
+              ) : (
+                <button onClick={handleFollow}>Follow</button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
       <div className="follow-stats">
-        <p
+        <button
+          className="action-button"
           onClick={() => setShowFollowersModal(true)}
           style={{ cursor: "pointer" }}
         >
           <strong>{followersCount}</strong> Followers
-        </p>
-        <p
+        </button>
+        <button
+          className="action-button"
           onClick={() => setShowFollowingModal(true)}
           style={{ cursor: "pointer" }}
         >
           <strong>{followingCount}</strong> Following
-        </p>
+        </button>
       </div>
-      {userId === user?.id ? (
-        <button onClick={() => setIsEditing(true)}>Edit Profile</button>
-      ) : (
-        <>
-          <button onClick={handleStartChat}>Message</button>
-          {isFollowing ? (
-            <button onClick={handleUnfollow}>Unfollow</button>
-          ) : (
-            <button onClick={handleFollow}>Follow</button>
-          )}
-        </>
-      )}
 
       {/* Followers Modal */}
       {showFollowersModal && (
@@ -388,8 +397,14 @@ const Profile = () => {
               />
             </label>
           </div>
-          <button onClick={handleSave}>Save Changes</button>
-          <button onClick={() => setIsEditing(false)}>Cancel</button>
+          <div className="popup-buttons">
+            <button className="edit-button" onClick={handleSave}>
+              Save Changes
+            </button>
+            <button className="edit-button" onClick={() => setIsEditing(false)}>
+              Cancel
+            </button>
+          </div>
         </div>
       )}
       {message && <p>{message}</p>}

@@ -68,9 +68,17 @@ const CreatePost = ({ userId }) => {
       <h2>Create a Post</h2>
       {error && <p className="error">{error}</p>}
       {successMessage && <p className="success-message">{successMessage}</p>}
-      <form onSubmit={handleSubmit}>
-        <input type="file" accept="image/*" onChange={handleImageChange} />
+      <form className="create-post-form" onSubmit={handleSubmit}>
+        <input
+          className="image-input"
+          type="file"
+          accept="image/*"
+          onChange={handleImageChange}
+        />
         <textarea
+          className="description-input"
+          rows={4}
+          cols={50}
           placeholder="Write a description..."
           value={description}
           onChange={(e) => setDescription(e.target.value)}

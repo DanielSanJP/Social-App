@@ -1,5 +1,16 @@
 import { Link, useNavigate } from "react-router-dom"; // Import useNavigate
 import { useUser } from "../contexts/UserContext";
+import "../styles/Navbar.css"; // Import CSS for styling
+import {
+  FaHome,
+  FaSearch,
+  FaEnvelope,
+  FaPlus,
+  FaUser,
+  FaSignOutAlt,
+  FaSignInAlt,
+  FaUserPlus,
+} from "react-icons/fa"; // Import icons from react-icons
 
 function Navbar() {
   const { user, logout } = useUser(); // Get logout function from UserContext
@@ -11,54 +22,60 @@ function Navbar() {
   };
 
   return (
-    <nav style={{ padding: "1rem", background: "#f4f4f4" }}>
-      <ul
-        style={{
-          display: "flex",
-          listStyle: "none",
-          gap: "1rem",
-          alignItems: "center",
-        }}
-      >
+    <nav>
+      <ul>
         <li>
-          <Link to="/socialfeed">Social Feed</Link>
+          <Link to="/socialfeed">
+            <FaHome />
+            <span>Social Feed</span>
+          </Link>
         </li>
         <li>
-          <Link to="/search">Search</Link>
+          <Link to="/search">
+            <FaSearch />
+            <span>Search</span>
+          </Link>
         </li>
         <li>
-          <Link to="/messages">Messages</Link>
+          <Link to="/messages">
+            <FaEnvelope />
+            <span>Messages</span>
+          </Link>
         </li>
         {user ? (
           <>
             <li>
-              <Link to="/createpost">Create Post</Link>
+              <Link to="/createpost">
+                <FaPlus />
+                <span>Create Post</span>
+              </Link>
             </li>
             <li>
-              <Link to={`/profile/${user.id}`}>Profile</Link>{" "}
-              {/* Dynamically navigate to the logged-in user's profile */}
+              <Link to={`/profile/${user.id}`}>
+                <FaUser />
+                <span>Profile</span>
+              </Link>
             </li>
             <li>
-              <button
-                onClick={handleSignOut}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "blue",
-                }}
-              >
-                Sign Out
-              </button>
+              <a onClick={handleSignOut}>
+                <FaSignOutAlt />
+                <span>Sign Out</span>
+              </a>
             </li>
           </>
         ) : (
           <>
             <li>
-              <Link to="/login">Login</Link>
+              <Link to="/login">
+                <FaSignInAlt />
+                <span>Login</span>
+              </Link>
             </li>
             <li>
-              <Link to="/signup">Signup</Link>
+              <Link to="/signup">
+                <FaUserPlus />
+                <span>Signup</span>
+              </Link>
             </li>
           </>
         )}

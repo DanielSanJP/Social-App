@@ -3,6 +3,8 @@ import { useParams, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import Cookies from "js-cookie";
 import { useUser } from "../contexts/UserContext";
+import { useNavigation } from "../contexts/NavigationContext";
+import { FaArrowLeft } from "react-icons/fa";
 import "../styles/Chat.css";
 
 const Chat = () => {
@@ -12,12 +14,34 @@ const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const { user } = useUser();
+  const { setIsNavVisible } = useNavigation();
   const [otherUser, setOtherUser] = useState(null);
   const messagesEndRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const intervalRef = useRef(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  // Update `isMobile` on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  useEffect(() => {
+    setIsNavVisible(!isMobile);
+
+    return () => {
+      setIsNavVisible(true); // Restore visibility when leaving the component
+    };
+  }, [isMobile, setIsNavVisible]);
 
   // Function to refresh auth token if needed
   const refreshAuthToken = async () => {
@@ -292,19 +316,26 @@ const Chat = () => {
     }
   };
 
-  // Function to generate placeholder avatar
-  const getInitials = (name) => {
-    if (!name) return "?";
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
-  };
-
   return (
     <div className="chat-box">
-      <h2>{otherUser ? otherUser.username : "Chat"}</h2>
+      <div className="chat-header">
+        {isMobile && (
+          <button
+            className="action-button"
+            onClick={() => navigate("/messages")}
+          >
+            <FaArrowLeft />
+          </button>
+        )}
+        {otherUser?.profile_pic_url && (
+          <img
+            src={otherUser.profile_pic_url}
+            alt={otherUser.username}
+            className="profile-pic"
+          />
+        )}
+        <h3>{otherUser ? otherUser.username : "Chat"}</h3>
+      </div>
       {error && <div className="error-message">{error}</div>}
       <div className="messages">
         {loading ? (
@@ -335,19 +366,7 @@ const Chat = () => {
                         alt={otherUser.username}
                       />
                     ) : (
-                      <div
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          backgroundColor: "#E4E6EB",
-                          color: "#65676B",
-                        }}
-                      >
-                        {getInitials(otherUser?.username)}
-                      </div>
+                      <div>{getInitials(otherUser?.username)}</div>
                     )}
                   </div>
                 )}

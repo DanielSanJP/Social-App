@@ -1,18 +1,30 @@
-.messages-list {
-  padding: 20px;
+.messages-container {
+  display: flex;
+  flex-direction: column; /* Change this to column for vertical alignment */
+  width: 100%;
+  height: 100%;
 }
 
+.messages-list {
+  display: flex;
+  justify-content: flex-start;
+  width: 80%;
+}
+
+.conversation-list {
+  display: flex;
+  flex-direction: column;
+}
 .conversation-item {
+  min-width: 70vw;
   display: flex;
   align-items: center;
   padding: 10px;
-  border-bottom: 1px solid #ddd;
   cursor: pointer;
   transition: background-color 0.3s;
 }
 
 .conversation-item:hover {
-  color: cornflowerblue;
   transform: scale(1.03);
   transition: 0.3s;
 }
@@ -27,4 +39,10 @@
 .conversation-username {
   font-size: 16px;
   font-weight: bold;
+}
+
+@media (max-width: 768px) {
+  .conversation-item {
+    min-width: 100vw;
+  }
 }

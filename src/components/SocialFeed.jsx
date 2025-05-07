@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom"; // Import useNavigate
 import { formatDistance } from "date-fns";
-import { FaHeart, FaRegHeart, FaRegComment } from "react-icons/fa"; // Import heart icons
+import { FaHeart, FaRegHeart, FaRegComment, FaEllipsisH } from "react-icons/fa"; // Import heart icons
 import "../styles/Feed.css"; // Import CSS for styling
 
 const SocialFeed = () => {
@@ -81,15 +81,22 @@ const SocialFeed = () => {
         <div className="posts-container">
           {posts.map((post) => (
             <div className="post" key={post.id}>
-              <div className="user-info">
-                <div className="profile-pic-container">
-                  <img
-                    className="profile-pic"
-                    src={post.users?.profile_pic_url} // Access profile_pic_url from the nested users field
-                    alt="ProfilePIC"
-                  />
+              <div className="post-header">
+                <div className="user-info">
+                  <div className="profile-pic-container">
+                    <img
+                      className="profile-pic"
+                      src={post.users?.profile_pic_url} // Access profile_pic_url from the nested users field
+                      alt="ProfilePIC"
+                    />
+                  </div>
+                  <h3 className="post-username">{post.users?.username}</h3>
                 </div>
-                <h3 className="post-username">{post.users?.username}</h3>
+                <div className="post-options">
+                  <button className="action-button">
+                    <FaEllipsisH />
+                  </button>
+                </div>
               </div>
               {post.image_url && (
                 <img

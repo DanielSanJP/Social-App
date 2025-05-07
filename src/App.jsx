@@ -1,6 +1,10 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { UserProvider, useUser } from "./contexts/UserContext"; // Import UserProvider and useUser
+import {
+  NavigationProvider,
+  useNavigation,
+} from "./contexts/NavigationContext"; // Import NavigationProvider and useNavigation
 import Navbar from "./components/Navbar";
 import Login from "./components/Login";
 import Signup from "./components/Signup";
@@ -16,13 +20,14 @@ import "./styles/App.css";
 
 const AppContent = () => {
   const { user } = useUser();
+  const { isNavVisible } = useNavigation();
 
   // Log the user context to the console
   console.log("UserContext:", user);
 
   return (
     <Router>
-      <Navbar />
+      {isNavVisible && <Navbar />}
       <Routes>
         <Route path="/" element={<SocialFeed />} />
         <Route path="/socialfeed" element={<SocialFeed />} />
@@ -92,7 +97,9 @@ const AppContent = () => {
 function App() {
   return (
     <UserProvider>
-      <AppContent />
+      <NavigationProvider>
+        <AppContent />
+      </NavigationProvider>
     </UserProvider>
   );
 }

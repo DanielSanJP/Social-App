@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import "../styles/Search.css"; // Import CSS for styling
 
 const Search = () => {
   const [query, setQuery] = useState("");
@@ -42,25 +43,24 @@ const Search = () => {
   };
 
   return (
-    <div>
+    <div className="searchbar">
       <input
         type="text"
         placeholder="Search users..."
         value={query}
         onChange={handleInputChange} // Trigger search on input change
       />
-      <div style={{ marginTop: "20px" }}>
+      <div className="search-results">
         {Array.isArray(results) &&
           results.map((user) => (
             <div
+              className="search-result-item"
               key={user.id}
               onClick={() => handleUserClick(user.id)} // Add click handler
-              style={{ cursor: "pointer" }}
             >
               <img
                 src={user.profile_pic_url} // Use the correct field name
                 alt={`${user.username}'s profile`}
-                style={{ width: "30px", height: "30px", borderRadius: "50%" }}
               />
               <span>{user.username}</span>
             </div>

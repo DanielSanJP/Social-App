@@ -1,13 +1,12 @@
 .social-feed {
   display: flex;
   justify-content: center;
+  max-width: 100%;
 }
 
 .posts-container {
   display: flex;
   flex-direction: column;
-  max-width: 100%;
-  width: min(470px);
   justify-content: center;
 }
 
@@ -16,15 +15,21 @@
   flex-direction: column;
   align-items: center;
   margin: 20px 0;
-  border-bottom: 1px solid #ddd; /* Border on bottom */
+  border-bottom: 1px solid #262626; /* Border on bottom */
+  width: 100%;
+}
+
+.post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* Vertically center items */
+  width: 100%; /* Ensure it spans the full width of the container */
+  margin-bottom: 10px; /* Add spacing below */
 }
 
 .user-info {
   display: flex;
-  justify-content: flex-start;
-  align-items: center; /* Vertically center items */
-  width: 100%; /* Ensure it spans the full width of the container */
-  margin-bottom: 10px; /* Add spacing below */
+  align-items: center;
 }
 
 .profile-pic {
@@ -38,29 +43,43 @@
   display: flex;
   flex-direction: column;
   width: 100%; /* Ensure it spans the full width of the container */
+  text-align: left;
 }
 
 .post-actions {
   display: flex;
   justify-content: start;
   width: 100%; /* Ensure it spans the full width of the container */
+  gap: 20px; /* Space between buttons */
 }
 
 .feed-post-image {
   max-width: 468px;
   height: auto;
+  border: 1px solid #262626; /* Border around the image */
+  border-radius: 5px;
 }
 
-/* Add styles for the comment button to match the like button */
-.action-button {
-  background-color: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: 1.5rem;
-}
+/* Add this at the bottom of your CSS file */
+@media (max-width: 768px) {
+  .feed-post-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0px;
+  }
 
-.action-button:active {
-  transform: scale(2);
-  transition: 0.1s;
-  opacity: 0.8; /* Reduce opacity for a pressed effect */
+  .social-feed {
+    width: 100%; /* Make the social feed span the full width */
+    padding: 0; /* Optional: Remove any padding if present */
+  }
+
+  .posts-container {
+    width: 100%; /* Make the posts container span the full width */
+    max-width: 100%; /* Ensure no maximum width is applied */
+  }
+
+  .post-header,
+  .post-description {
+    width: 90%;
+  }
 }

@@ -73,7 +73,7 @@ const PostView = () => {
       <button onClick={() => navigate(-1)} className="close-button">
         Close
       </button>
-      <div className="post-header">
+      <div className="post-view-header">
         <img
           src={user.profile_pic_url || "/default-profile.png"}
           alt={user.username || "Unknown User"}
@@ -104,14 +104,19 @@ const PostView = () => {
       ) : (
         <div className="post-description">
           <p>{description}</p>
-          <button onClick={() => setIsEditing(true)} className="edit-button">
-            Edit
-          </button>
         </div>
       )}
-      <button onClick={handleDelete} className="delete-button">
-        Delete
-      </button>
+      <div className="post-view-buttons">
+        <button
+          onClick={() => setIsEditing(true)}
+          className="post-view-edit-button"
+        >
+          Edit
+        </button>
+        <button onClick={handleDelete} className="delete-button">
+          Delete
+        </button>
+      </div>
     </div>
   );
 };
