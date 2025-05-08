@@ -8,7 +8,7 @@ const upload = multer({
 });
 
 // Middleware to handle file uploads
-export const uploadMiddleware = upload.single("profile_pic_file");
+export const uploadMiddleware = upload.single("file");
 
 // Update user details
 export const updateUser = async (req, res) => {
@@ -17,6 +17,17 @@ export const updateUser = async (req, res) => {
   const profilePicFile = req.file; // File uploaded by the user
 
   try {
+    // Check if this user exists and get current data
+    const { data: existingUser, error: fetchError } = await supabase
+      .from("users")
+      .select("username")
+      .eq("id", id)
+      .single();
+
+    if (fetchError) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
     let profilePicUrl = null;
 
     // If a file is uploaded, upload it to the Supabase bucket
@@ -42,11 +53,24 @@ export const updateUser = async (req, res) => {
     }
 
     // Prepare the update object
-    const updateData = { username, updated_at: new Date() };
+    const updateData = { updated_at: new Date() };
+    
+    // Only update username if it's different from the current one
+    if (username && username !== existingUser.username) {
+      updateData.username = username;
+    }
 
     // If a new profile picture is uploaded, include it in the update
     if (profilePicUrl) {
       updateData.profile_pic_url = profilePicUrl;
+    }
+
+    // Skip update if there's nothing to update
+    if (Object.keys(updateData).length === 1 && updateData.updated_at) {
+      return res.status(200).json({ 
+        message: "No changes to update", 
+        user: existingUser 
+      });
     }
 
     // Update the user in the 'public.users' table
@@ -58,6 +82,17 @@ export const updateUser = async (req, res) => {
 
     if (error) {
       console.error("Error updating user:", error);
+      
+      // Check for common constraint violations
+      if (error.code === '23505') {
+        return res.status(400).json({ error: "Username already taken" });
+      }
+      
+      // Check for potential RLS policy restrictions
+      if (error.code === '42501') {
+        return res.status(403).json({ error: "You don't have permission to update this username" });
+      }
+      
       return res.status(400).json({ error: error.message });
     }
 

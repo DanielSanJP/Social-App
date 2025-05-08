@@ -118,22 +118,25 @@ const Profile = () => {
     formData.append("username", username);
 
     if (profilePicFile) {
-      formData.append("profile_pic_file", profilePicFile);
+      formData.append("file", profilePicFile);
     }
 
     try {
       const token = Cookies.get("authToken");
       if (!token) {
         console.error("No token found in cookies");
+        setMessage("Authentication error. Please log in again.");
         return;
       }
+
+      setMessage("Updating profile...");
 
       const response = await fetch(`${baseUrl}/api/users/${user.id}`, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        credentials: "include", // Include cookies in the request
+        credentials: "include",
         body: formData,
       });
 
@@ -145,12 +148,11 @@ const Profile = () => {
 
       updateUser(data.user);
       setMessage("Profile updated successfully!");
+      setIsEditing(false);
     } catch (error) {
       console.error("Error updating profile:", error);
-      setMessage("Failed to update profile.");
+      setMessage(`Failed to update profile: ${error.message}`);
     }
-
-    setIsEditing(false);
   };
 
   const handleStartChat = async () => {
