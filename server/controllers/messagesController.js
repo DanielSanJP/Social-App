@@ -24,48 +24,50 @@ export const getConversations = async (req, res) => {
   const supabase = getSupabaseClient();
 
   try {
-    // Instead of using conversation_members table directly (which has the problematic RLS policy),
-    // use a raw SQL query to bypass RLS and avoid the recursive policy
-    const { data: conversationsData, error: sqlError } = await supabase.rpc(
-      'get_user_conversations',
-      { user_id_param: userId }
-    ).catch(err => {
-      console.error('RPC error:', err);
+    // First get all conversation IDs this user is part of - direct approach
+    const { data: userConversations, error: userConvError } = await supabase
+      .from('conversation_members')
+      .select('conversation_id')
+      .eq('user_id', userId);
       
-      // Fallback method if RPC doesn't exist
-      return supabase.from('conversations')
-        .select(`
-          id,
-          created_at
-        `)
-        .filter('id', 'in', 
-          supabase.from('conversation_members')
-            .select('conversation_id')
-            .eq('user_id', userId)
-        );
-    });
-
-    if (sqlError) {
-      console.error('Error fetching conversations with RPC/SQL:', sqlError);
-      throw new Error(sqlError.message);
+    if (userConvError) {
+      console.error('Error fetching user conversation IDs:', userConvError);
+      throw new Error(userConvError.message);
     }
 
-    if (!conversationsData || conversationsData.length === 0) {
+    if (!userConversations || userConversations.length === 0) {
       console.log('No conversations found for user:', userId);
-      return res.status(200).json([]); // Return an empty array if no conversations
+      return res.status(200).json([]); // Return empty array if no conversations
+    }
+    
+    // Extract conversation IDs
+    const conversationIds = userConversations.map(item => item.conversation_id);
+    console.log(`Found ${conversationIds.length} conversations for user ${userId}`);
+
+    // Get basic conversation data
+    const { data: conversations, error: convsError } = await supabase
+      .from('conversations')
+      .select('id, created_at')
+      .in('id', conversationIds);
+      
+    if (convsError) {
+      console.error('Error fetching conversations:', convsError);
+      throw new Error(convsError.message);
     }
 
-    console.log(`Found ${conversationsData.length} conversations for user ${userId}`);
+    if (!conversations || conversations.length === 0) {
+      console.log('No conversation details found');
+      return res.status(200).json([]);
+    }
 
-    // Create an array to hold the processed conversations
+    // Process each conversation to get the other members and messages
     const processedConversations = [];
 
-    // For each conversation, get the other user's details and the last message
-    for (const conversation of conversationsData) {
+    for (const conversation of conversations) {
       try {
         const conversationId = conversation.id;
         
-        // Get all members in this conversation using direct parameter queries to avoid RLS recursion
+        // Get all members in this conversation
         const { data: members, error: membersError } = await supabase
           .from('conversation_members')
           .select('user_id')
