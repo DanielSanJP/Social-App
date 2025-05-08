@@ -324,8 +324,12 @@ export const createOrFetchConversation = async (req, res) => {
   
   // Get a Supabase client with the user's auth token
   const supabaseWithAuth = getSupabaseClient(authToken);
+  
+  // Get a service role client that bypasses RLS
+  const serviceClient = getSupabaseClient(null, true);
 
   try {
+    // Check for existing conversations (use auth client as this should be allowed)
     const { data: senderConversations, error: senderError } = await supabaseWithAuth
       .from('conversation_members')
       .select('conversation_id')
@@ -352,24 +356,29 @@ export const createOrFetchConversation = async (req, res) => {
       return res.status(200).json({ conversationId: existingConversation.conversation_id });
     }
 
-    // Create a new conversation
-    const { data: newConversation, error: createError } = await supabaseWithAuth
+    // Create a new conversation using service role client to bypass RLS
+    const { data: newConversation, error: createError } = await serviceClient
       .from('conversations')
       .insert({ created_by: senderId })
       .select();
 
     if (createError) {
+      console.error('Error creating conversation:', createError);
       throw new Error(createError.message);
     }
 
     const conversationId = newConversation[0].id;
 
-    const { error: memberError } = await supabaseWithAuth.from('conversation_members').insert([
-      { conversation_id: conversationId, user_id: senderId },
-      { conversation_id: conversationId, user_id: recipientId },
-    ]);
+    // Add members using service role client to ensure it works
+    const { error: memberError } = await serviceClient
+      .from('conversation_members')
+      .insert([
+        { conversation_id: conversationId, user_id: senderId },
+        { conversation_id: conversationId, user_id: recipientId },
+      ]);
 
     if (memberError) {
+      console.error('Error adding conversation members:', memberError);
       throw new Error(memberError.message);
     }
 

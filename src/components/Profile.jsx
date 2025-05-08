@@ -177,29 +177,45 @@ const Profile = () => {
       const token = Cookies.get("authToken");
 
       if (!token) {
-        console.error("No token found in cookies");
+        setMessage("You must be logged in to start a conversation.");
         return;
       }
 
+      setMessage("Creating conversation...");
+
+      // Only send recipientId as the backend will set created_by itself
       const response = await fetch(`${baseUrl}/api/messages/conversations`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        credentials: "include", // Include cookies in the request
-        body: JSON.stringify({ recipientId: userId }), // Pass the recipient's userId
+        credentials: "include",
+        body: JSON.stringify({
+          recipientId: userId,
+          // The backend ignores this field and uses the senderId from the auth token
+        }),
       });
+
+      // Check if the response is JSON
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error(
+          "Server returned non-JSON response. API might be unavailable."
+        );
+      }
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to start chat.");
+        throw new Error(data.error || `Server error: ${response.status}`);
       }
 
+      setMessage("");
       navigate(`/chat/${data.conversationId}`);
     } catch (error) {
       console.error("Error starting chat:", error);
+      setMessage(`Failed to start conversation: ${error.message}`);
     }
   };
 

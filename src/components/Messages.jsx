@@ -22,13 +22,6 @@ const Messages = () => {
       // Get auth token from cookies
       const authToken = Cookies.get("authToken");
 
-      // Add debugging for token
-      console.log("Auth token exists:", !!authToken);
-      console.log(
-        "User context data:",
-        user ? { id: user.id, username: user.username } : "No user in context"
-      );
-
       if (!authToken) {
         console.error("No authentication token found");
         setLoading(false);
@@ -36,21 +29,6 @@ const Messages = () => {
         navigate("/login");
         return;
       }
-
-      console.log(
-        "Fetching conversations with token:",
-        authToken ? "Token exists" : "No token"
-      );
-
-      // Log the exact API endpoint we're hitting
-      console.log("API endpoint:", `${baseUrl}/api/messages/conversations`);
-
-      // Send the conversations request with proper headers
-      console.log("Sending conversations request with headers:", {
-        withCredentials: true,
-        contentType: "application/json",
-        authorization: "Bearer [Token Hidden]",
-      });
 
       const response = await axios.get(
         `${baseUrl}/api/messages/conversations`,
@@ -63,26 +41,6 @@ const Messages = () => {
           timeout: 10000, // 10 second timeout for better reliability
         }
       );
-
-      console.log("Conversations API response status:", response.status);
-      console.log("Response headers:", response.headers);
-
-      // Safe logging of response shape without exposing sensitive data
-      if (response.data) {
-        console.log("Response data structure:", {
-          type: typeof response.data,
-          isArray: Array.isArray(response.data),
-          length: Array.isArray(response.data) ? response.data.length : "n/a",
-          keys:
-            typeof response.data === "object"
-              ? Object.keys(response.data)
-              : "n/a",
-          sampleStructure:
-            Array.isArray(response.data) && response.data.length > 0
-              ? Object.keys(response.data[0]).join(", ")
-              : "no items",
-        });
-      }
 
       // If we get a successful response but no data, handle it gracefully
       if (!response.data) {
@@ -107,25 +65,6 @@ const Messages = () => {
       if (error) setError(null);
     } catch (error) {
       console.error("Error fetching conversations:", error);
-
-      // Enhanced error logging
-      console.log("Full error object:", {
-        message: error.message,
-        name: error.name,
-        code: error.code,
-        stack: error.stack,
-        axiosConfig: error.config
-          ? {
-              url: error.config.url,
-              method: error.config.method,
-              headers: error.config.headers
-                ? { ...error.config.headers, Authorization: "[REDACTED]" }
-                : "none",
-              baseURL: error.config.baseURL,
-              timeout: error.config.timeout,
-            }
-          : "No config",
-      });
 
       // Extract detailed error information
       const statusCode = error.response?.status;
@@ -190,7 +129,7 @@ const Messages = () => {
     } finally {
       setLoading(false);
     }
-  }, [navigate, refreshUser, user, error]); // Added 'error' back, but keeping 'baseUrl' out as it's a constant
+  }, [navigate, refreshUser, error]); // Removed 'user' from dependencies as it's not used in the function
 
   useEffect(() => {
     // Check if user exists in context
@@ -274,32 +213,6 @@ const Messages = () => {
                   <span className="conversation-username">
                     {conversation.users?.username || "Unknown User"}
                   </span>
-                  {conversation.last_message && (
-                    <span
-                      className={`conversation-preview ${
-                        conversation.is_sender ? "sent" : "received"
-                      }`}
-                    >
-                      {conversation.is_sender && (
-                        <span className="sent-indicator">You: </span>
-                      )}
-                      {conversation.last_message.substring(0, 30)}
-                      {conversation.last_message.length > 30 ? "..." : ""}
-                    </span>
-                  )}
-                  {conversation.last_message_time && (
-                    <span className="conversation-time">
-                      {new Date(conversation.last_message_time).toLocaleString(
-                        undefined,
-                        {
-                          month: "short",
-                          day: "numeric",
-                          hour: "numeric",
-                          minute: "2-digit",
-                        }
-                      )}
-                    </span>
-                  )}
                 </div>
               </li>
             ))}
