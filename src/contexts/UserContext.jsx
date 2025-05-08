@@ -6,6 +6,7 @@ import React, {
   useRef,
 } from "react";
 import Cookies from "js-cookie"; // Use js-cookie for reliable cookie handling
+import { baseUrl } from "../utils/api"; // Import baseUrl
 
 // Create the UserContext
 const UserContext = createContext();
@@ -28,7 +29,7 @@ export const UserProvider = ({ children }) => {
 
     try {
       console.log("Attempting to refresh auth token...");
-      const response = await fetch("http://localhost:5000/api/auth/refresh", {
+      const response = await fetch(`${baseUrl}/api/auth/refresh`, {
         method: "POST",
         credentials: "include", // Include cookies in the request
         headers: {
@@ -69,7 +70,7 @@ export const UserProvider = ({ children }) => {
       console.log("AuthToken found:", authToken);
 
       // Make request with explicit headers
-      const response = await fetch("http://localhost:5000/api/auth/user", {
+      const response = await fetch(`${baseUrl}/api/auth/user`, {
         method: "GET",
         credentials: "include",
         headers: {
@@ -89,17 +90,14 @@ export const UserProvider = ({ children }) => {
           // Try once more with the new token
           const newAuthToken = Cookies.get("authToken");
           if (newAuthToken) {
-            const retryResponse = await fetch(
-              "http://localhost:5000/api/auth/user",
-              {
-                method: "GET",
-                credentials: "include",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${newAuthToken}`,
-                },
-              }
-            );
+            const retryResponse = await fetch(`${baseUrl}/api/auth/user`, {
+              method: "GET",
+              credentials: "include",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${newAuthToken}`,
+              },
+            });
 
             if (retryResponse.ok) {
               const data = await retryResponse.json();

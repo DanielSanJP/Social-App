@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useUser } from "../contexts/UserContext";
 import { Navigate, useParams, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie"; // Replace cookie with js-cookie
+import { baseUrl } from "../utils/api"; // Import baseUrl
 import "../styles/Profile.css"; // Import your CSS file for styling
 import UserPosts from "./UserPosts"; // Import UserPosts component
 
@@ -51,9 +52,7 @@ const Profile = () => {
       // Fetch the profile data for the other user
       const fetchProfile = async () => {
         try {
-          const response = await fetch(
-            `http://localhost:5000/api/users/${userId}`
-          );
+          const response = await fetch(`${baseUrl}/api/users/${userId}`);
           const data = await response.json();
           if (!response.ok) {
             throw new Error(data.error || "Failed to fetch profile.");
@@ -71,8 +70,8 @@ const Profile = () => {
     const fetchFollowData = async () => {
       try {
         const [followersResponse, followingResponse] = await Promise.all([
-          fetch(`http://localhost:5000/api/follows/${userId}/followers`),
-          fetch(`http://localhost:5000/api/follows/${userId}/following`),
+          fetch(`${baseUrl}/api/follows/${userId}/followers`),
+          fetch(`${baseUrl}/api/follows/${userId}/following`),
         ]);
 
         const followersData = await followersResponse.json();
@@ -90,7 +89,7 @@ const Profile = () => {
         const token = Cookies.get("authToken");
         if (token && user?.id) {
           const isFollowingResponse = await fetch(
-            `http://localhost:5000/api/follows/check/${userId}`,
+            `${baseUrl}/api/follows/check/${userId}`,
             {
               headers: { Authorization: `Bearer ${token}` },
             }
@@ -125,17 +124,14 @@ const Profile = () => {
         return;
       }
 
-      const response = await fetch(
-        `http://localhost:5000/api/users/${user.id}`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          credentials: "include", // Include cookies in the request
-          body: formData,
-        }
-      );
+      const response = await fetch(`${baseUrl}/api/users/${user.id}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include", // Include cookies in the request
+        body: formData,
+      });
 
       const data = await response.json();
 
@@ -162,18 +158,15 @@ const Profile = () => {
         return;
       }
 
-      const response = await fetch(
-        "http://localhost:5000/api/messages/conversations",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          credentials: "include", // Include cookies in the request
-          body: JSON.stringify({ recipientId: userId }), // Pass the recipient's userId
-        }
-      );
+      const response = await fetch(`${baseUrl}/api/messages/conversations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        credentials: "include", // Include cookies in the request
+        body: JSON.stringify({ recipientId: userId }), // Pass the recipient's userId
+      });
 
       const data = await response.json();
 
@@ -194,7 +187,7 @@ const Profile = () => {
         return;
       }
 
-      const response = await fetch("http://localhost:5000/api/follows", {
+      const response = await fetch(`${baseUrl}/api/follows`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -221,15 +214,12 @@ const Profile = () => {
         return;
       }
 
-      const response = await fetch(
-        `http://localhost:5000/api/follows/${userId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await fetch(`${baseUrl}/api/follows/${userId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       if (!response.ok) {
         throw new Error("Failed to unfollow user.");

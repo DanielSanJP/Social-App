@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom"; // Import useNavigate
 import { formatDistance } from "date-fns";
 import { FaHeart, FaRegHeart, FaRegComment, FaEllipsisH } from "react-icons/fa"; // Import heart icons
+import { baseUrl } from "../utils/api"; // Import baseUrl
 import "../styles/Feed.css"; // Import CSS for styling
 
 const SocialFeed = () => {
@@ -13,7 +14,7 @@ const SocialFeed = () => {
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/posts", {
+        const response = await fetch(`${baseUrl}/api/posts`, {
           credentials: "include", // Include cookies in the request
         });
 
@@ -39,7 +40,7 @@ const SocialFeed = () => {
   const handleToggleLike = async (postId) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/posts/${postId}/toggle-like`,
+        `${baseUrl}/api/posts/${postId}/toggle-like`,
         {
           method: "PATCH",
           credentials: "include", // Include cookies in the request
@@ -137,7 +138,6 @@ const SocialFeed = () => {
                     })}
                   </small>
                 </p>
-                {/* <p>Likes: {post.likes}</p> */}
               </div>
             </div>
           ))}

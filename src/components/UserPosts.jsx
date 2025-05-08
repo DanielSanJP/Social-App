@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "../styles/UserPosts.css"; // Import CSS for styling
 import { useParams, useNavigate } from "react-router-dom"; // Import useNavigate
+import { baseUrl } from "../utils/api"; // Import baseUrl
 
 const UserPosts = () => {
   const { userId } = useParams(); // Get the userId from the URL
@@ -13,9 +14,7 @@ const UserPosts = () => {
     console.log("Fetching posts for userId:", userId); // Log the userId
     const fetchUserPosts = async () => {
       try {
-        const response = await fetch(
-          `http://localhost:5000/api/posts?userId=${userId}`
-        );
+        const response = await fetch(`${baseUrl}/api/posts?userId=${userId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch user posts");
         }

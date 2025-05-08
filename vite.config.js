@@ -11,7 +11,7 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      "/api": "https://your-railway-server-url",
+      "/api": "https://social-app-production-b997.up.railway.app",
     },
   },
 });

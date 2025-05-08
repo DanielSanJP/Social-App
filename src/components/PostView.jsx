@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "../contexts/UserContext"; // Assuming you have a UserContext
+import { baseUrl } from "../utils/api"; // Import baseUrl
 import "../styles/PostView.css"; // Import CSS for styling
 
 const PostView = () => {
@@ -14,9 +15,7 @@ const PostView = () => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await fetch(
-          `http://localhost:5000/api/users/${post.user_id}`
-        );
+        const response = await fetch(`${baseUrl}/api/users/${post.user_id}`);
         if (!response.ok) {
           throw new Error("Failed to fetch user data");
         }
@@ -32,14 +31,11 @@ const PostView = () => {
 
   const handleSave = async () => {
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/posts/${post.id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ description }),
-        }
-      );
+      const response = await fetch(`${baseUrl}/api/posts/${post.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description }),
+      });
       if (!response.ok) {
         throw new Error("Failed to update post");
       }
@@ -51,12 +47,9 @@ const PostView = () => {
 
   const handleDelete = async () => {
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/posts/${post.id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await fetch(`${baseUrl}/api/posts/${post.id}`, {
+        method: "DELETE",
+      });
       if (!response.ok) {
         throw new Error("Failed to delete post");
       }

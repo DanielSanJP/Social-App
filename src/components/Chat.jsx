@@ -5,6 +5,7 @@ import Cookies from "js-cookie";
 import { useUser } from "../contexts/UserContext";
 import { useNavigation } from "../contexts/NavigationContext";
 import { FaArrowLeft } from "react-icons/fa";
+import { baseUrl } from "../utils/api"; // Import baseUrl
 import "../styles/Chat.css";
 
 const Chat = () => {
@@ -48,7 +49,7 @@ const Chat = () => {
     try {
       console.log("Attempting to refresh auth token in Chat component...");
       const response = await axios.post(
-        "http://localhost:5000/api/auth/refresh",
+        `${baseUrl}/api/auth/refresh`,
         {},
         { withCredentials: true }
       );
@@ -80,19 +81,22 @@ const Chat = () => {
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
+  // Helper function for user initials
+  const getInitials = (username) => {
+    if (!username) return "?";
+    return username.charAt(0).toUpperCase();
+  };
+
   // Fetch user details based on ID
   const fetchUserDetails = async (userId, authToken) => {
     try {
-      const userResponse = await axios.get(
-        `http://localhost:5000/api/users/${userId}`,
-        {
-          withCredentials: true,
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const userResponse = await axios.get(`${baseUrl}/api/users/${userId}`, {
+        withCredentials: true,
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          "Content-Type": "application/json",
+        },
+      });
 
       return userResponse.data;
     } catch (error) {
@@ -131,7 +135,7 @@ const Chat = () => {
 
         // Use the correct endpoint based on your server routes
         const messagesResponse = await axios.get(
-          `http://localhost:5000/api/messages/${conversationId}/messages`,
+          `${baseUrl}/api/messages/${conversationId}/messages`,
           {
             withCredentials: true,
             headers: {
@@ -215,7 +219,7 @@ const Chat = () => {
             if (newAuthToken) {
               try {
                 const retryResponse = await axios.get(
-                  `http://localhost:5000/api/messages/${conversationId}/messages`,
+                  `${baseUrl}/api/messages/${conversationId}/messages`,
                   {
                     withCredentials: true,
                     headers: {
@@ -286,7 +290,7 @@ const Chat = () => {
 
       // Use the correct endpoint for sending messages
       const response = await axios.post(
-        `http://localhost:5000/api/messages/${conversationId}/messages`,
+        `${baseUrl}/api/messages/${conversationId}/messages`,
         { content: newMessage },
         {
           withCredentials: true,

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import "../styles/CreatePost.css";
 import Cookies from "js-cookie"; // Import the js-cookie library
+import { baseUrl } from "../utils/api"; // Import baseUrl
 
 const CreatePost = ({ userId }) => {
   const [image, setImage] = useState(null);
@@ -38,7 +39,7 @@ const CreatePost = ({ userId }) => {
     }
 
     try {
-      const response = await fetch("http://localhost:5000/api/posts", {
+      const response = await fetch(`${baseUrl}/api/posts`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

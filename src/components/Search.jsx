@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { baseUrl } from "../utils/api"; // Import baseUrl
 import "../styles/Search.css"; // Import CSS for styling
 
 const Search = () => {
@@ -17,13 +18,9 @@ const Search = () => {
     console.log("Search Query Sent:", searchQuery); // Log the query
 
     try {
-      const response = await axios.get(
-        `http://localhost:5000/api/users/search`,
-        {
-          // Use full backend URL
-          params: { query: searchQuery },
-        }
-      );
+      const response = await axios.get(`${baseUrl}/api/users/search`, {
+        params: { query: searchQuery },
+      });
       console.log("Search Response Received:", response.data); // Log the response
       setResults(Array.isArray(response.data) ? response.data : []); // Ensure it's an array
     } catch (err) {

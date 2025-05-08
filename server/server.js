@@ -7,22 +7,35 @@ import followRoutes from "./routes/followRoutes.js"; // Import the follow routes
 import cors from "cors";
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5000; // Railway will provide the PORT
 
-// Use environment variables for CORS origin
-const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
-app.use(cors({
-  origin: corsOrigin,
-  credentials: true, // Allow credentials (cookies)
-}));
+// Configure CORS for multiple origins
+const allowedOrigins = [
+  'https://social-app-omega-pied.vercel.app',
+  'http://localhost:5173'
+];
 
+// Use environment variables for CORS or fall back to the allowed origins list
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, etc)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.CORS_ORIGIN === origin) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true // Allow credentials (cookies)
+};
+
+app.use(cors(corsOptions));
 app.use(express.json()); // Middleware to parse JSON bodies
 
 // Handle preflight requests
-app.options("*", cors({
-  origin: corsOrigin,
-  credentials: true,
-}));
+app.options("*", cors(corsOptions));
 
 // Mount the authRoutes at /api/auth
 app.use('/api/auth', authRoutes);  // This ensures the route prefix is correct

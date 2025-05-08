@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { baseUrl } from "../utils/api"; // Import baseUrl
 import "../styles/Register.css"; // Assuming you have some CSS for styling
 
 const Signup = () => {
@@ -21,7 +22,7 @@ const Signup = () => {
     if (profilePic) formData.append("profilePic", profilePic); // For public.users
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/signup", {
+      const response = await fetch(`${baseUrl}/api/auth/signup`, {
         method: "POST",
         body: formData,
       });

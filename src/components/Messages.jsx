@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Cookies from "js-cookie";
 import { useUser } from "../contexts/UserContext";
+import { baseUrl } from "../utils/api"; // Import baseUrl
 import "../styles/Messages.css";
 
 const Messages = ({ onSelectConversation }) => {
@@ -36,7 +37,7 @@ const Messages = ({ onSelectConversation }) => {
         ); // Debug log
 
         const response = await axios.get(
-          "http://localhost:5000/api/messages/conversations",
+          `${baseUrl}/api/messages/conversations`,
           {
             withCredentials: true,
             headers: {
