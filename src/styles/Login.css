@@ -1,0 +1,18 @@
+.Login-Form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 10px;
+  background-color: #000000;
+  gap: 20px;
+}
+
+.Login-Form input {
+  width: 80%;
+  margin: 0 auto;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+  background-color: #000000;
+}
