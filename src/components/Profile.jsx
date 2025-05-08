@@ -147,6 +147,17 @@ const Profile = () => {
       }
 
       updateUser(data.user);
+
+      // Update local state with new profile data
+      setProfileData({
+        ...data.user,
+        profile_pic_url: data.user.profilePicture || data.user.profile_pic_url,
+      });
+      setUsername(data.user.username || "");
+
+      // Clear the file input
+      setProfilePicFile(null);
+
       setMessage("Profile updated successfully!");
       setIsEditing(false);
     } catch (error) {
