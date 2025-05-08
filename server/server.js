@@ -38,6 +38,16 @@ app.use(express.json()); // Middleware to parse JSON bodies
 // Handle preflight requests
 app.options("*", cors(corsOptions));
 
+// Add health check endpoint
+app.get('/api/health-check', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    version: process.env.npm_package_version || '1.0.0'
+  });
+});
+
 // Mount the authRoutes at /api/auth
 app.use('/api/auth', authRoutes);  // This ensures the route prefix is correct
 
@@ -50,7 +60,7 @@ app.use("/api/users", userRoutes);
 // Mount the messages routes at /api/messages
 app.use("/api/messages", messagesRoutes); // Add this line to include messages routes
 
-// Mount the follow routes at /api/follows
+// Mount the follow routes at /api/follows to match the database table name
 app.use("/api/follows", followRoutes);
 
 // Middleware to log the Auth User ID for debugging

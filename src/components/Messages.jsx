@@ -45,21 +45,7 @@ const Messages = () => {
       // Log the exact API endpoint we're hitting
       console.log("API endpoint:", `${baseUrl}/api/messages/conversations`);
 
-      // Let's try to make a simple test request to check server status first
-      try {
-        const testResponse = await axios.get(`${baseUrl}/api/health-check`, {
-          timeout: 5000, // 5 second timeout for quick status check
-        });
-        console.log(
-          "API server status check:",
-          testResponse.status,
-          testResponse.data
-        );
-      } catch (testError) {
-        console.warn("API server status check failed:", testError.message);
-      }
-
-      // Now proceed with the real request, with debugging
+      // Send the conversations request with proper headers
       console.log("Sending conversations request with headers:", {
         withCredentials: true,
         contentType: "application/json",
@@ -74,6 +60,7 @@ const Messages = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${authToken}`,
           },
+          timeout: 10000, // 10 second timeout for better reliability
         }
       );
 
