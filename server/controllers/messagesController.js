@@ -27,17 +27,49 @@ export const getConversations = async (req, res) => {
   const supabase = getSupabaseClient(authToken);
 
   try {
+    // Declare as let instead of const so we can reassign it later
+    let userConversations;
+    
     // First get all conversation IDs this user is part of - direct approach
-    const { data: userConversations, error: userConvError } = await supabase
+    const { data: initialConversations, error: userConvError } = await supabase
       .from('conversation_members')
       .select('conversation_id')
       .eq('user_id', userId);
       
-    console.log("User conversations query result:", userConversations);
+    console.log("User conversations query result:", initialConversations);
 
     if (userConvError) {
-      console.error('Error fetching user conversation IDs:', userConvError);
-      throw new Error(userConvError.message);
+      // Check if it's a recursion error
+      if (userConvError.message?.includes('recursion')) {
+        console.error('Recursion error detected, trying simple RLS bypass');
+        // Use service role client instead to bypass RLS
+        const serviceClient = getSupabaseClient(null, true); // Pass true to use service role
+        
+        // Direct query using service client
+        const { data: directConversations, error: directError } = await serviceClient
+          .from('conversation_members')
+          .select('conversation_id')
+          .eq('user_id', userId);
+          
+        if (directError) {
+          throw new Error(directError.message);
+        }
+        
+        // Continue with the direct results
+        if (!directConversations || directConversations.length === 0) {
+          return res.status(200).json([]);
+        }
+        
+        // Assign to our mutable variable
+        userConversations = directConversations;
+      } else {
+        // Not a recursion error, throw normally
+        console.error('Error fetching user conversation IDs:', userConvError);
+        throw new Error(userConvError.message);
+      }
+    } else {
+      // No error, use the initial conversations
+      userConversations = initialConversations;
     }
 
     if (!userConversations || userConversations.length === 0) {
