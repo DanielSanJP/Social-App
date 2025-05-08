@@ -48,7 +48,17 @@ const Messages = () => {
           }
         );
 
-        setConversations(response.data || []);
+        // Sort conversations by last message time (most recent first)
+        const sortedConversations = response.data.sort((a, b) => {
+          // If no last_message_time, put at the end
+          if (!a.last_message_time) return 1;
+          if (!b.last_message_time) return -1;
+
+          // Sort by date descending (newest first)
+          return new Date(b.last_message_time) - new Date(a.last_message_time);
+        });
+
+        setConversations(sortedConversations || []);
       } catch (error) {
         if (error.response && error.response.status === 401) {
           console.error("Unauthorized, redirecting to login...");
@@ -127,6 +137,19 @@ const Messages = () => {
                     <span className="conversation-preview">
                       {conversation.last_message.substring(0, 30)}
                       {conversation.last_message.length > 30 ? "..." : ""}
+                    </span>
+                  )}
+                  {conversation.last_message_time && (
+                    <span className="conversation-time">
+                      {new Date(conversation.last_message_time).toLocaleString(
+                        undefined,
+                        {
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        }
+                      )}
                     </span>
                   )}
                 </div>

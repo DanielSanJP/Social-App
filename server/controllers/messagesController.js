@@ -30,19 +30,58 @@ export const getConversations = async (req, res) => {
 
     const conversationIds = conversationMembers.map((member) => member.conversation_id);
 
-    // Step 2: Fetch conversations and their members (excluding the logged-in user)
+    // Get all conversations with their participants
     const { data: conversations, error: conversationError } = await supabaseWithAuth
-      .from('conversation_members')
-      .select(`
-        conversation_id,
-        users:users(username, profile_pic_url)
-      `)
-      .in('conversation_id', conversationIds)
-      .neq('user_id', userId); // Exclude the logged-in user
+      .from('conversations')
+      .select('id')
+      .in('id', conversationIds);
 
     if (conversationError) throw new Error(conversationError.message);
 
-    res.status(200).json(conversations);
+    // Create an array to hold the processed conversations
+    const processedConversations = [];
+
+    // For each conversation, get the other user's details and the last message
+    for (const conversation of conversations) {
+      // Get the other user in this conversation
+      const { data: otherUser, error: otherUserError } = await supabaseWithAuth
+        .from('conversation_members')
+        .select(`
+          user_id,
+          users:user_id(username, profile_pic_url)
+        `)
+        .eq('conversation_id', conversation.id)
+        .neq('user_id', userId)
+        .single();
+
+      if (otherUserError) {
+        console.warn(`Error fetching other user for conversation ${conversation.id}:`, otherUserError);
+        continue;
+      }
+
+      // Get the last message in this conversation
+      const { data: messages, error: messagesError } = await supabaseWithAuth
+        .from('messages')
+        .select('content, created_at')
+        .eq('conversation_id', conversation.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (messagesError) {
+        console.warn(`Error fetching messages for conversation ${conversation.id}:`, messagesError);
+        continue;
+      }
+
+      // Add to processed conversations
+      processedConversations.push({
+        conversation_id: conversation.id,
+        users: otherUser.users,
+        last_message: messages.length > 0 ? messages[0].content : null,
+        last_message_time: messages.length > 0 ? messages[0].created_at : null
+      });
+    }
+
+    res.status(200).json(processedConversations);
   } catch (error) {
     console.error('Error fetching conversations:', error);
     res.status(500).json({ error: error.message });
