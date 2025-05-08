@@ -22,6 +22,13 @@ const Messages = () => {
       // Get auth token from cookies
       const authToken = Cookies.get("authToken");
 
+      // Add debugging for token
+      console.log("Auth token exists:", !!authToken);
+      console.log(
+        "User context data:",
+        user ? { id: user.id, username: user.username } : "No user in context"
+      );
+
       if (!authToken) {
         console.error("No authentication token found");
         setLoading(false);
@@ -35,6 +42,30 @@ const Messages = () => {
         authToken ? "Token exists" : "No token"
       );
 
+      // Log the exact API endpoint we're hitting
+      console.log("API endpoint:", `${baseUrl}/api/messages/conversations`);
+
+      // Let's try to make a simple test request to check server status first
+      try {
+        const testResponse = await axios.get(`${baseUrl}/api/health-check`, {
+          timeout: 5000, // 5 second timeout for quick status check
+        });
+        console.log(
+          "API server status check:",
+          testResponse.status,
+          testResponse.data
+        );
+      } catch (testError) {
+        console.warn("API server status check failed:", testError.message);
+      }
+
+      // Now proceed with the real request, with debugging
+      console.log("Sending conversations request with headers:", {
+        withCredentials: true,
+        contentType: "application/json",
+        authorization: "Bearer [Token Hidden]",
+      });
+
       const response = await axios.get(
         `${baseUrl}/api/messages/conversations`,
         {
@@ -46,7 +77,25 @@ const Messages = () => {
         }
       );
 
-      console.log("Conversations API response:", response.status);
+      console.log("Conversations API response status:", response.status);
+      console.log("Response headers:", response.headers);
+
+      // Safe logging of response shape without exposing sensitive data
+      if (response.data) {
+        console.log("Response data structure:", {
+          type: typeof response.data,
+          isArray: Array.isArray(response.data),
+          length: Array.isArray(response.data) ? response.data.length : "n/a",
+          keys:
+            typeof response.data === "object"
+              ? Object.keys(response.data)
+              : "n/a",
+          sampleStructure:
+            Array.isArray(response.data) && response.data.length > 0
+              ? Object.keys(response.data[0]).join(", ")
+              : "no items",
+        });
+      }
 
       // If we get a successful response but no data, handle it gracefully
       if (!response.data) {
@@ -72,9 +121,37 @@ const Messages = () => {
     } catch (error) {
       console.error("Error fetching conversations:", error);
 
+      // Enhanced error logging
+      console.log("Full error object:", {
+        message: error.message,
+        name: error.name,
+        code: error.code,
+        stack: error.stack,
+        axiosConfig: error.config
+          ? {
+              url: error.config.url,
+              method: error.config.method,
+              headers: error.config.headers
+                ? { ...error.config.headers, Authorization: "[REDACTED]" }
+                : "none",
+              baseURL: error.config.baseURL,
+              timeout: error.config.timeout,
+            }
+          : "No config",
+      });
+
       // Extract detailed error information
       const statusCode = error.response?.status;
       const errorMessage = error.response?.data?.error || error.message;
+      const errorDetails =
+        error.response?.data?.details || "No additional details";
+
+      console.log("Error details:", {
+        statusCode,
+        errorMessage,
+        errorDetails,
+        responseData: error.response?.data,
+      });
 
       if (statusCode === 401) {
         console.error("Unauthorized access, redirecting to login...");
@@ -93,9 +170,30 @@ const Messages = () => {
         console.warn("No conversations found.");
         setConversations([]); // Set conversations to an empty array
       } else {
-        setError(
-          `Error loading conversations: ${errorMessage}. Please try again.`
-        );
+        // For 500 errors, add more detailed error information
+        if (statusCode === 500) {
+          const serverErrorDetail =
+            errorDetails || "No detailed error message provided";
+          console.error("Server error details:", serverErrorDetail);
+
+          // Check for the recursion error specifically
+          if (errorMessage && errorMessage.includes("infinite recursion")) {
+            console.error(
+              "Detected recursion error in database policy. This is a server-side issue with row-level security or database relations."
+            );
+            setError(
+              `Server database error: ${errorMessage}. Please contact support with reference ID: ${Date.now()}`
+            );
+          } else {
+            setError(
+              `Server error (${statusCode}): ${errorMessage}. Please try again later or contact support.`
+            );
+          }
+        } else {
+          setError(
+            `Error loading conversations: ${errorMessage}. Please try again.`
+          );
+        }
 
         // For server errors, don't clear user session, just show error
         if (statusCode >= 500) {
@@ -105,7 +203,7 @@ const Messages = () => {
     } finally {
       setLoading(false);
     }
-  }, [navigate, refreshUser]);
+  }, [navigate, refreshUser, error, user, baseUrl]);
 
   useEffect(() => {
     // Check if user exists in context

@@ -20,8 +20,8 @@ export const getConversations = async (req, res) => {
   
   console.log(`Fetching conversations for user: ${userId}`);
   
-  // Use the admin/service role client to bypass RLS policies
-  const supabase = getSupabaseClient();
+  // Use authenticated client since we're fixing RLS policies
+  const supabase = getSupabaseClient(authToken);
 
   try {
     // First get all conversation IDs this user is part of - direct approach
@@ -42,7 +42,7 @@ export const getConversations = async (req, res) => {
     
     // Extract conversation IDs
     const conversationIds = userConversations.map(item => item.conversation_id);
-    console.log(`Found ${conversationIds.length} conversations for user ${userId}`);
+    console.log(`Found ${conversationIds.length} conversations for user ${userId}: ${JSON.stringify(conversationIds)}`);
 
     // Get basic conversation data
     const { data: conversations, error: convsError } = await supabase
@@ -59,13 +59,17 @@ export const getConversations = async (req, res) => {
       console.log('No conversation details found');
       return res.status(200).json([]);
     }
+    
+    console.log(`Retrieved ${conversations.length} conversation details: ${JSON.stringify(conversations)}`);
 
     // Process each conversation to get the other members and messages
     const processedConversations = [];
+    const errors = [];
 
     for (const conversation of conversations) {
       try {
         const conversationId = conversation.id;
+        console.log(`Processing conversation: ${conversationId}`);
         
         // Get all members in this conversation
         const { data: members, error: membersError } = await supabase
@@ -75,16 +79,23 @@ export const getConversations = async (req, res) => {
 
         if (membersError) {
           console.warn(`Error fetching members for conversation ${conversationId}:`, membersError);
+          errors.push(`Members error for ${conversationId}: ${membersError.message}`);
           continue;
         }
 
+        console.log(`Found ${members.length} members for conversation ${conversationId}: ${JSON.stringify(members)}`);
+
         // Find the other user's ID (not the current user)
-        const otherUserId = members.find(member => member.user_id !== userId)?.user_id;
+        const otherUserMember = members.find(member => member.user_id !== userId);
+        const otherUserId = otherUserMember?.user_id;
         
         if (!otherUserId) {
-          console.warn(`No other user found in conversation ${conversationId}`);
+          console.warn(`No other user found in conversation ${conversationId}, members: ${JSON.stringify(members)}`);
+          errors.push(`No other user found in conversation ${conversationId}`);
           continue;
         }
+        
+        console.log(`Found other user ID: ${otherUserId} in conversation ${conversationId}`);
         
         // Fetch user details in a separate query
         const { data: otherUser, error: otherUserError } = await supabase
@@ -95,8 +106,11 @@ export const getConversations = async (req, res) => {
 
         if (otherUserError) {
           console.warn(`Error fetching other user for conversation ${conversationId}:`, otherUserError);
+          errors.push(`User error for ${conversationId}: ${otherUserError.message}`);
           continue;
         }
+
+        console.log(`Retrieved other user details: ${JSON.stringify(otherUser)}`);
 
         // Get the last message in this conversation
         const { data: messages, error: messagesError } = await supabase
@@ -108,24 +122,35 @@ export const getConversations = async (req, res) => {
 
         if (messagesError) {
           console.warn(`Error fetching messages for conversation ${conversationId}:`, messagesError);
+          errors.push(`Messages error for ${conversationId}: ${messagesError.message}`);
           continue;
         }
 
+        console.log(`Found ${messages.length} messages for conversation ${conversationId}`);
+
         // Add to processed conversations
-        processedConversations.push({
+        const processedConversation = {
           conversation_id: conversationId,
           users: otherUser,
           last_message: messages.length > 0 ? messages[0].content : null,
-          last_message_time: messages.length > 0 ? messages[0].created_at : null,
+          last_message_time: messages.length > 0 ? messages[0].created_at : conversation.created_at,
           is_sender: messages.length > 0 ? messages[0].sender_id === userId : false
-        });
+        };
+        
+        console.log(`Processed conversation: ${JSON.stringify(processedConversation)}`);
+        processedConversations.push(processedConversation);
       } catch (err) {
         console.error(`Error processing conversation ${conversation.id}:`, err);
+        errors.push(`Unexpected error for ${conversation.id}: ${err.message}`);
         // Continue with other conversations instead of breaking the entire flow
       }
     }
 
     console.log(`Successfully processed ${processedConversations.length} conversations`);
+    if (errors.length > 0) {
+      console.warn(`Encountered ${errors.length} errors while processing: ${JSON.stringify(errors)}`);
+    }
+    
     res.status(200).json(processedConversations);
   } catch (error) {
     console.error('Error fetching conversations:', error);
