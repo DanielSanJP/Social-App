@@ -38,7 +38,7 @@ const Messages = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${authToken}`,
           },
-          timeout: 10000, // 10 second timeout for better reliability
+          // Removed timeout constraint to accommodate slower server responses
         }
       );
 
