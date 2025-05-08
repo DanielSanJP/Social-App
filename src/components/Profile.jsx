@@ -146,13 +146,19 @@ const Profile = () => {
         throw new Error(data.error || "Failed to update profile.");
       }
 
-      updateUser(data.user);
+      // Update the global user context with both profile_pic_url fields
+      updateUser({
+        ...data.user,
+        profilePicture: data.user.profile_pic_url, // Add this mapping
+      });
 
       // Update local state with new profile data
       setProfileData({
-        ...data.user,
-        profile_pic_url: data.user.profilePicture || data.user.profile_pic_url,
+        ...profileData,
+        username: data.user.username || username,
+        profile_pic_url: data.user.profile_pic_url,
       });
+
       setUsername(data.user.username || "");
 
       // Clear the file input
