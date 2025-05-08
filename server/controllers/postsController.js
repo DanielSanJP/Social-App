@@ -1,4 +1,4 @@
-import { supabase } from "../supabaseClient.js"; // Import the Supabase client
+import { supabase, getSupabaseClient } from "../supabaseClient.js"; // Import the Supabase client
 import multer from "multer";
 import { hasUserLikedPost, addLike } from "../utils/likesUtil.js";
 
@@ -19,10 +19,17 @@ export const upload = multer({ storage });
 export const getAllPosts = async (req, res) => {
   const { userId } = req.query; // Get userId from query params
   const currentUserId = req.user?.id;
+  
+  // Get auth token from request headers or cookies
+  const authToken = req.headers.authorization?.split(' ')[1] || 
+                    req.cookies?.authToken;
+  
+  // Get a Supabase client with the user's auth token
+  const supabaseWithAuth = getSupabaseClient(authToken);
 
   try {
     // Get all posts without pagination limits and without filtering by likes
-    let query = supabase
+    let query = supabaseWithAuth
       .from("posts")
       .select(`
         id,
@@ -58,7 +65,7 @@ export const getAllPosts = async (req, res) => {
     }
 
     // Get all likes for the current user
-    const { data: userLikes, error: likesError } = await supabase
+    const { data: userLikes, error: likesError } = await supabaseWithAuth
       .from("likes")
       .select("post_id")
       .eq("user_id", currentUserId);
@@ -260,11 +267,22 @@ export const likePost = async (req, res) => {
 // Toggle like for a post
 export const toggleLike = async (req, res) => {
   const { id: postId } = req.params;
-  const userId = req.user.id;
+  const userId = req.user?.id;
+  
+  if (!userId) {
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+  
+  // Get auth token from request headers or cookies
+  const authToken = req.headers.authorization?.split(' ')[1] || 
+                   req.cookies?.authToken;
+  
+  // Get a Supabase client with the user's auth token
+  const supabaseWithAuth = getSupabaseClient(authToken);
 
   try {
     // Check if the user has already liked the post
-    const { data: like, error: likeError } = await supabase
+    const { data: like, error: likeError } = await supabaseWithAuth
       .from("likes")
       .select("*")
       .eq("user_id", userId)
@@ -278,7 +296,7 @@ export const toggleLike = async (req, res) => {
     }
 
     // Get the current post to read its likes count
-    const { data: currentPost, error: postError } = await supabase
+    const { data: currentPost, error: postError } = await supabaseWithAuth
       .from("posts")
       .select("likes")
       .eq("id", postId)
@@ -292,7 +310,7 @@ export const toggleLike = async (req, res) => {
     let updatedPost;
     if (like) {
       // User has already liked the post, so remove the like
-      await supabase
+      await supabaseWithAuth
         .from("likes")
         .delete()
         .eq("user_id", userId)
@@ -301,7 +319,7 @@ export const toggleLike = async (req, res) => {
       // Calculate new likes count (decrement)
       const newLikesCount = Math.max(0, (currentPost.likes || 0) - 1); // Prevent negative likes
       
-      const { data, error: updateError } = await supabase
+      const { data, error: updateError } = await supabaseWithAuth
         .from("posts")
         .update({ likes: newLikesCount })
         .eq("id", postId)
@@ -313,14 +331,14 @@ export const toggleLike = async (req, res) => {
       updatedPost = { ...data, liked: false };
     } else {
       // User has not liked the post, so add a like
-      await supabase
+      await supabaseWithAuth
         .from("likes")
         .insert([{ user_id: userId, post_id: postId }]);
 
       // Calculate new likes count (increment)
       const newLikesCount = (currentPost.likes || 0) + 1;
       
-      const { data, error: updateError } = await supabase
+      const { data, error: updateError } = await supabaseWithAuth
         .from("posts")
         .update({ likes: newLikesCount })
         .eq("id", postId)

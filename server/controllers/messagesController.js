@@ -1,12 +1,23 @@
-import { supabase } from '../supabaseClient.js';
+import { getSupabaseClient } from '../supabaseClient.js';
 
 // Fetch all conversations for the logged-in user
 export const getConversations = async (req, res) => {
-  const userId = req.user.id;
+  const userId = req.user?.id;
+  
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  // Get auth token from request headers or cookies
+  const authToken = req.headers.authorization?.split(' ')[1] || 
+                    req.cookies?.authToken;
+  
+  // Get a Supabase client with the user's auth token
+  const supabaseWithAuth = getSupabaseClient(authToken);
 
   try {
     // Step 1: Fetch conversation IDs for the logged-in user
-    const { data: conversationMembers, error: memberError } = await supabase
+    const { data: conversationMembers, error: memberError } = await supabaseWithAuth
       .from('conversation_members')
       .select('conversation_id')
       .eq('user_id', userId);
@@ -20,7 +31,7 @@ export const getConversations = async (req, res) => {
     const conversationIds = conversationMembers.map((member) => member.conversation_id);
 
     // Step 2: Fetch conversations and their members (excluding the logged-in user)
-    const { data: conversations, error: conversationError } = await supabase
+    const { data: conversations, error: conversationError } = await supabaseWithAuth
       .from('conversation_members')
       .select(`
         conversation_id,
@@ -41,10 +52,22 @@ export const getConversations = async (req, res) => {
 // Fetch messages for a specific conversation
 export const getMessages = async (req, res) => {
   const { conversationId } = req.params;
+  const userId = req.user?.id;
+  
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  // Get auth token from request headers or cookies
+  const authToken = req.headers.authorization?.split(' ')[1] || 
+                    req.cookies?.authToken;
+  
+  // Get a Supabase client with the user's auth token
+  const supabaseWithAuth = getSupabaseClient(authToken);
 
   try {
     // Validate if the conversation exists
-    const { data: conversation, error: conversationError } = await supabase
+    const { data: conversation, error: conversationError } = await supabaseWithAuth
       .from('conversations')
       .select('id')
       .eq('id', conversationId)
@@ -55,7 +78,7 @@ export const getMessages = async (req, res) => {
     }
 
     // Fetch messages for the conversation
-    const { data: messages, error: messageError } = await supabase
+    const { data: messages, error: messageError } = await supabaseWithAuth
       .from('messages')
       .select('*')
       .eq('conversation_id', conversationId)
@@ -74,11 +97,22 @@ export const getMessages = async (req, res) => {
 export const sendMessage = async (req, res) => {
   const { conversationId } = req.params;
   const { content } = req.body;
-  const senderId = req.user.id; // Assuming `authenticateUser` middleware attaches the user ID
+  const senderId = req.user?.id;
+  
+  if (!senderId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  // Get auth token from request headers or cookies
+  const authToken = req.headers.authorization?.split(' ')[1] || 
+                    req.cookies?.authToken;
+  
+  // Get a Supabase client with the user's auth token
+  const supabaseWithAuth = getSupabaseClient(authToken);
 
   try {
     // Fetch the members of the conversation
-    const { data: conversationMembers, error: membersError } = await supabase
+    const { data: conversationMembers, error: membersError } = await supabaseWithAuth
       .from('conversation_members')
       .select('user_id')
       .eq('conversation_id', conversationId);
@@ -98,7 +132,7 @@ export const sendMessage = async (req, res) => {
     }
 
     // Insert the message into the database
-    const { data: message, error: messageError } = await supabase
+    const { data: message, error: messageError } = await supabaseWithAuth
       .from('messages')
       .insert([
         {
@@ -126,14 +160,21 @@ export const sendMessage = async (req, res) => {
 // Create or fetch a conversation
 export const createOrFetchConversation = async (req, res) => {
   const { recipientId } = req.body;
-  const senderId = req.user.id;
+  const senderId = req.user?.id;
 
   if (!senderId) {
     return res.status(401).json({ error: "Unauthorized" });
   }
+  
+  // Get auth token from request headers or cookies
+  const authToken = req.headers.authorization?.split(' ')[1] || 
+                   req.cookies?.authToken;
+  
+  // Get a Supabase client with the user's auth token
+  const supabaseWithAuth = getSupabaseClient(authToken);
 
   try {
-    const { data: senderConversations, error: senderError } = await supabase
+    const { data: senderConversations, error: senderError } = await supabaseWithAuth
       .from('conversation_members')
       .select('conversation_id')
       .eq('user_id', senderId);
@@ -142,7 +183,7 @@ export const createOrFetchConversation = async (req, res) => {
       throw new Error(senderError.message);
     }
 
-    const { data: recipientConversations, error: recipientError } = await supabase
+    const { data: recipientConversations, error: recipientError } = await supabaseWithAuth
       .from('conversation_members')
       .select('conversation_id')
       .eq('user_id', recipientId);
@@ -160,7 +201,7 @@ export const createOrFetchConversation = async (req, res) => {
     }
 
     // Create a new conversation
-    const { data: newConversation, error: createError } = await supabase
+    const { data: newConversation, error: createError } = await supabaseWithAuth
       .from('conversations')
       .insert({ created_by: senderId })
       .select();
@@ -171,7 +212,7 @@ export const createOrFetchConversation = async (req, res) => {
 
     const conversationId = newConversation[0].id;
 
-    const { error: memberError } = await supabase.from('conversation_members').insert([
+    const { error: memberError } = await supabaseWithAuth.from('conversation_members').insert([
       { conversation_id: conversationId, user_id: senderId },
       { conversation_id: conversationId, user_id: recipientId },
     ]);
