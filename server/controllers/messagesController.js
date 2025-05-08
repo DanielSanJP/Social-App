@@ -107,7 +107,7 @@ export const getConversations = async (req, res) => {
         // Fetch user details in a separate query
         const { data: otherUser, error: otherUserError } = await supabase
           .from('users')
-          .select('username, profile_pic_url')
+          .select('id, username, profile_pic_url') // Ensure you select these fields explicitly
           .eq('id', otherUserId)
           .single();
 
@@ -249,6 +249,14 @@ export const sendMessage = async (req, res) => {
   const authToken = req.headers.authorization?.split(' ')[1] || 
                     req.cookies?.authToken;
   
+  // Add at the beginning of the sendMessage function
+  console.log("Message request:", {
+    conversationId,
+    content,
+    senderId,
+    authToken: !!authToken // just log if it exists, not the actual token
+  });
+
   // Get a Supabase client with the user's auth token
   const supabaseWithAuth = getSupabaseClient(authToken);
 

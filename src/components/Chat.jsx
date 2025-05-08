@@ -281,6 +281,10 @@ const Chat = () => {
       setMessages((prevMessages) => [...prevMessages, response.data]);
       setNewMessage("");
     } catch (error) {
+      // Display the actual error message
+      const errorMsg = error.response?.data?.error || "Failed to send message";
+      setError(errorMsg);
+
       // Handle unauthorized error
       if (error.response && error.response.status === 401) {
         const refreshed = await refreshAuthToken();
