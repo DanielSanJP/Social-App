@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import "../styles/Register.css"; // Assuming you have some CSS for styling
 
 const Signup = () => {
   const [email, setEmail] = useState("");
@@ -39,7 +40,7 @@ const Signup = () => {
   };
 
   return (
-    <form onSubmit={handleSignup}>
+    <form className="Register-Form" onSubmit={handleSignup}>
       <h2>Signup</h2>
       {error && <p style={{ color: "red" }}>{error}</p>}
       {success && <p style={{ color: "green" }}>{success}</p>}

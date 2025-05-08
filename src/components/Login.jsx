@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useUser } from "../contexts/UserContext";
 import { useNavigate } from "react-router-dom"; // Import useNavigate
+import "../styles/Login.css"; // Import CSS for styling
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -41,7 +42,7 @@ function Login() {
 
   return (
     <div>
-      <form onSubmit={handleLogin}>
+      <form className="Login-Form" onSubmit={handleLogin}>
         <h2>Login</h2>
         {error && <p style={{ color: "red" }}>{error}</p>}
         <input
