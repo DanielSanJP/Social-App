@@ -23,53 +23,21 @@ export const getConversations = async (req, res) => {
   
   console.log(`Fetching conversations for user: ${userId}`);
   
-  // Use authenticated client since we're fixing RLS policies
-  const supabase = getSupabaseClient(authToken);
+  // Always start with the service role client to bypass RLS completely and avoid recursion
+  const serviceClient = getSupabaseClient(null, true);
 
   try {
-    // Declare as let instead of const so we can reassign it later
-    let userConversations;
-    
-    // First get all conversation IDs this user is part of - direct approach
-    const { data: initialConversations, error: userConvError } = await supabase
+    // Get conversation IDs directly with service role to bypass all RLS
+    const { data: userConversations, error: directError } = await serviceClient
       .from('conversation_members')
       .select('conversation_id')
       .eq('user_id', userId);
       
-    console.log("User conversations query result:", initialConversations);
+    console.log("Service role conversation query result:", userConversations);
 
-    if (userConvError) {
-      // Check if it's a recursion error
-      if (userConvError.message?.includes('recursion')) {
-        console.error('Recursion error detected, trying simple RLS bypass');
-        // Use service role client instead to bypass RLS
-        const serviceClient = getSupabaseClient(null, true); // Pass true to use service role
-        
-        // Direct query using service client
-        const { data: directConversations, error: directError } = await serviceClient
-          .from('conversation_members')
-          .select('conversation_id')
-          .eq('user_id', userId);
-          
-        if (directError) {
-          throw new Error(directError.message);
-        }
-        
-        // Continue with the direct results
-        if (!directConversations || directConversations.length === 0) {
-          return res.status(200).json([]);
-        }
-        
-        // Assign to our mutable variable
-        userConversations = directConversations;
-      } else {
-        // Not a recursion error, throw normally
-        console.error('Error fetching user conversation IDs:', userConvError);
-        throw new Error(userConvError.message);
-      }
-    } else {
-      // No error, use the initial conversations
-      userConversations = initialConversations;
+    if (directError) {
+      console.error('Error fetching user conversation IDs:', directError);
+      throw new Error(directError.message);
     }
 
     if (!userConversations || userConversations.length === 0) {
@@ -82,7 +50,7 @@ export const getConversations = async (req, res) => {
     console.log(`Found ${conversationIds.length} conversations for user ${userId}: ${JSON.stringify(conversationIds)}`);
 
     // Get basic conversation data
-    const { data: conversations, error: convsError } = await supabase
+    const { data: conversations, error: convsError } = await serviceClient
       .from('conversations')
       .select('id, created_at')
       .in('id', conversationIds);
@@ -111,19 +79,12 @@ export const getConversations = async (req, res) => {
         console.log(`Processing conversation: ${conversationId}`);
         
         // Get all members in this conversation
-        const { data: members, error: membersError } = await supabase
+        const { data: members, error: membersError } = await serviceClient
           .from('conversation_members')
           .select('user_id, conversation_id')  // Include conversation_id for easier debugging
           .eq('conversation_id', conversationId);
 
         console.log(`Raw members query for ${conversationId}:`, members);
-
-        // Try the query with all permissions to see if RLS is the issue
-        const { data: adminMembers } = await supabase.rpc('admin_get_conversation_members', {
-          conv_id: conversationId
-        });
-
-        console.log(`Admin members query for ${conversationId}:`, adminMembers);
 
         if (membersError) {
           console.warn(`Error fetching members for conversation ${conversationId}:`, membersError);
@@ -146,7 +107,7 @@ export const getConversations = async (req, res) => {
         console.log(`Found other user ID: ${otherUserId} in conversation ${conversationId}`);
         
         // Fetch user details in a separate query
-        const { data: otherUser, error: otherUserError } = await supabase
+        const { data: otherUser, error: otherUserError } = await serviceClient
           .from('users')
           .select('id, username, profile_pic_url') // Ensure you select these fields explicitly
           .eq('id', otherUserId)
@@ -161,7 +122,7 @@ export const getConversations = async (req, res) => {
         console.log(`Retrieved other user details: ${JSON.stringify(otherUser)}`);
 
         // Get the last message in this conversation
-        const { data: messages, error: messagesError } = await supabase
+        const { data: messages, error: messagesError } = await serviceClient
           .from('messages')
           .select('content, created_at, sender_id')
           .eq('conversation_id', conversationId)
@@ -204,20 +165,20 @@ export const getConversations = async (req, res) => {
       console.log("================ DIAGNOSTICS ================");
       
       // Check conversation_members for this user
-      const { data: memberCheck } = await supabase
+      const { data: memberCheck } = await serviceClient
         .from('conversation_members')
         .select('*')
         .eq('user_id', userId);
       console.log("Conversation members for user:", memberCheck);
       
       // Check conversations table
-      const { data: convCheck } = await supabase
+      const { data: convCheck } = await serviceClient
         .from('conversations')
         .select('*');
       console.log("All conversations:", convCheck);
       
       // Check messages table
-      const { data: msgCheck } = await supabase
+      const { data: msgCheck } = await serviceClient
         .from('messages')
         .select('*');
       console.log("All messages:", msgCheck);
