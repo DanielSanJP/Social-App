@@ -81,8 +81,17 @@ export const getConversations = async (req, res) => {
         // Get all members in this conversation
         const { data: members, error: membersError } = await supabase
           .from('conversation_members')
-          .select('user_id')
+          .select('user_id, conversation_id')  // Include conversation_id for easier debugging
           .eq('conversation_id', conversationId);
+
+        console.log(`Raw members query for ${conversationId}:`, members);
+
+        // Try the query with all permissions to see if RLS is the issue
+        const { data: adminMembers } = await supabase.rpc('admin_get_conversation_members', {
+          conv_id: conversationId
+        });
+
+        console.log(`Admin members query for ${conversationId}:`, adminMembers);
 
         if (membersError) {
           console.warn(`Error fetching members for conversation ${conversationId}:`, membersError);
