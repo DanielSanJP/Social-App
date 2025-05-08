@@ -5,12 +5,20 @@ export const getConversations = async (req, res) => {
   const userId = req.user?.id;
   
   if (!userId) {
+    console.error('getConversations: No user ID found in request');
     return res.status(401).json({ error: 'Unauthorized' });
   }
   
   // Get auth token from request headers or cookies
   const authToken = req.headers.authorization?.split(' ')[1] || 
                     req.cookies?.authToken;
+  
+  if (!authToken) {
+    console.error('getConversations: No auth token found');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  console.log(`Fetching conversations for user: ${userId}`);
   
   // Get a Supabase client with the user's auth token
   const supabaseWithAuth = getSupabaseClient(authToken);
@@ -22,13 +30,18 @@ export const getConversations = async (req, res) => {
       .select('conversation_id')
       .eq('user_id', userId);
 
-    if (memberError) throw new Error(memberError.message);
+    if (memberError) {
+      console.error('Error fetching conversation members:', memberError);
+      throw new Error(memberError.message);
+    }
 
     if (!conversationMembers || conversationMembers.length === 0) {
+      console.log('No conversations found for user:', userId);
       return res.status(200).json([]); // Return an empty array instead of 404
     }
 
     const conversationIds = conversationMembers.map((member) => member.conversation_id);
+    console.log(`Found ${conversationIds.length} conversations for user ${userId}`);
 
     // Get all conversations with their participants
     const { data: conversations, error: conversationError } = await supabaseWithAuth
@@ -36,55 +49,70 @@ export const getConversations = async (req, res) => {
       .select('id')
       .in('id', conversationIds);
 
-    if (conversationError) throw new Error(conversationError.message);
+    if (conversationError) {
+      console.error('Error fetching conversations:', conversationError);
+      throw new Error(conversationError.message);
+    }
+
+    if (!conversations || conversations.length === 0) {
+      console.log('No conversation details found for IDs:', conversationIds);
+      return res.status(200).json([]);
+    }
 
     // Create an array to hold the processed conversations
     const processedConversations = [];
 
     // For each conversation, get the other user's details and the last message
     for (const conversation of conversations) {
-      // Get the other user in this conversation
-      const { data: otherUser, error: otherUserError } = await supabaseWithAuth
-        .from('conversation_members')
-        .select(`
-          user_id,
-          users:user_id(username, profile_pic_url)
-        `)
-        .eq('conversation_id', conversation.id)
-        .neq('user_id', userId)
-        .single();
+      try {
+        // Get the other user in this conversation
+        const { data: otherUser, error: otherUserError } = await supabaseWithAuth
+          .from('conversation_members')
+          .select(`
+            user_id,
+            users:user_id(username, profile_pic_url)
+          `)
+          .eq('conversation_id', conversation.id)
+          .neq('user_id', userId)
+          .single();
 
-      if (otherUserError) {
-        console.warn(`Error fetching other user for conversation ${conversation.id}:`, otherUserError);
-        continue;
+        if (otherUserError) {
+          console.warn(`Error fetching other user for conversation ${conversation.id}:`, otherUserError);
+          continue;
+        }
+
+        // Get the last message in this conversation
+        const { data: messages, error: messagesError } = await supabaseWithAuth
+          .from('messages')
+          .select('content, created_at, sender_id')
+          .eq('conversation_id', conversation.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (messagesError) {
+          console.warn(`Error fetching messages for conversation ${conversation.id}:`, messagesError);
+          continue;
+        }
+
+        // Add to processed conversations
+        processedConversations.push({
+          conversation_id: conversation.id,
+          users: otherUser.users,
+          last_message: messages.length > 0 ? messages[0].content : null,
+          last_message_time: messages.length > 0 ? messages[0].created_at : null,
+          is_sender: messages.length > 0 ? messages[0].sender_id === userId : false
+        });
+      } catch (err) {
+        console.error(`Error processing conversation ${conversation.id}:`, err);
+        // Continue with other conversations instead of breaking the entire flow
       }
-
-      // Get the last message in this conversation
-      const { data: messages, error: messagesError } = await supabaseWithAuth
-        .from('messages')
-        .select('content, created_at')
-        .eq('conversation_id', conversation.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (messagesError) {
-        console.warn(`Error fetching messages for conversation ${conversation.id}:`, messagesError);
-        continue;
-      }
-
-      // Add to processed conversations
-      processedConversations.push({
-        conversation_id: conversation.id,
-        users: otherUser.users,
-        last_message: messages.length > 0 ? messages[0].content : null,
-        last_message_time: messages.length > 0 ? messages[0].created_at : null
-      });
     }
 
+    console.log(`Successfully processed ${processedConversations.length} conversations`);
     res.status(200).json(processedConversations);
   } catch (error) {
     console.error('Error fetching conversations:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 };
 

@@ -21,9 +21,8 @@ export const authenticateUser = async (req, res, next) => {
     console.log("Auth token found:", token ? "Token present" : "No token");
     
     if (!token) {
-      console.warn("No auth token found. User is not authenticated.");
-      req.user = null;
-      return next(); // Allow the request to proceed as unauthenticated
+      console.warn("No auth token found. Authentication required.");
+      return res.status(401).json({ error: "Unauthorized" });
     }
     
     // Try to get user from Supabase using the token

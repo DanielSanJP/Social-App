@@ -2,21 +2,22 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Cookies from "js-cookie";
-import PropTypes from "prop-types"; // Import PropTypes for validation
+import PropTypes from "prop-types";
 import { useUser } from "../hooks/useUser";
-import { baseUrl } from "../utils/api"; // Import baseUrl
+import { baseUrl } from "../utils/api";
 import "../styles/Messages.css";
 
 const Messages = () => {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { user } = useUser();
+  const { user, refreshUser } = useUser();
   const navigate = useNavigate();
 
   useEffect(() => {
     // Check if user exists in context
     if (!user) {
+      console.log("No user found, redirecting to login");
       navigate("/login");
       return;
     }
@@ -37,6 +38,11 @@ const Messages = () => {
           return;
         }
 
+        console.log(
+          "Fetching conversations with token:",
+          authToken ? "Token exists" : "No token"
+        );
+
         const response = await axios.get(
           `${baseUrl}/api/messages/conversations`,
           {
@@ -48,6 +54,15 @@ const Messages = () => {
           }
         );
 
+        console.log("Conversations API response:", response.status);
+
+        // If we get a successful response but no data, handle it gracefully
+        if (!response.data) {
+          console.warn("API returned no data");
+          setConversations([]);
+          return;
+        }
+
         // Sort conversations by last message time (most recent first)
         const sortedConversations = response.data.sort((a, b) => {
           // If no last_message_time, put at the end
@@ -58,18 +73,42 @@ const Messages = () => {
           return new Date(b.last_message_time) - new Date(a.last_message_time);
         });
 
-        setConversations(sortedConversations || []);
+        setConversations(sortedConversations);
+
+        // Reset any previous errors if successful
+        if (error) setError(null);
       } catch (error) {
-        if (error.response && error.response.status === 401) {
-          console.error("Unauthorized, redirecting to login...");
+        console.error("Error fetching conversations:", error);
+
+        // Extract detailed error information
+        const statusCode = error.response?.status;
+        const errorMessage = error.response?.data?.error || error.message;
+
+        if (statusCode === 401) {
+          console.error("Unauthorized access, redirecting to login...");
           setError("Your session has expired. Please log in again.");
+
+          // Clear cookies and user data
+          Cookies.remove("authToken");
+          Cookies.remove("refreshToken");
+
+          if (refreshUser) {
+            refreshUser(); // Update user context if refresh function exists
+          }
+
           navigate("/login");
-        } else if (error.response && error.response.status === 404) {
+        } else if (statusCode === 404) {
           console.warn("No conversations found.");
           setConversations([]); // Set conversations to an empty array
         } else {
-          console.error("Error fetching conversations:", error);
-          setError("Error loading conversations. Please try again later.");
+          setError(
+            `Error loading conversations: ${errorMessage}. Please try again.`
+          );
+
+          // For server errors, don't clear user session, just show error
+          if (statusCode >= 500) {
+            console.error("Server error:", errorMessage);
+          }
         }
       } finally {
         setLoading(false);
@@ -77,7 +116,7 @@ const Messages = () => {
     };
 
     fetchConversations();
-  }, [user, navigate]);
+  }, [user, navigate, refreshUser, error]);
 
   const handleSelectConversation = (conversation) => {
     try {
@@ -86,6 +125,7 @@ const Messages = () => {
 
       if (!authToken) {
         console.error("No auth token found, redirecting to login...");
+        setError("Authentication failed. Please log in again.");
         navigate("/login");
         return;
       }
@@ -96,8 +136,15 @@ const Messages = () => {
       });
     } catch (error) {
       console.error("Error selecting conversation:", error);
-      navigate("/login");
+      setError("Something went wrong. Please try again.");
     }
+  };
+
+  // Function to retry loading conversations
+  const handleRetry = () => {
+    setError(null);
+    setLoading(true);
+    // The useEffect will trigger again since we cleared the error state
   };
 
   if (loading) {
@@ -107,7 +154,16 @@ const Messages = () => {
   return (
     <div className="messages-container">
       <h2>Your Conversations</h2>
-      {error && <div className="error-message">{error}</div>}
+
+      {error && (
+        <div className="error-message">
+          {error}
+          <button onClick={handleRetry} className="retry-button">
+            Retry
+          </button>
+        </div>
+      )}
+
       <div className="messages-list">
         {conversations.length === 0 ? (
           <p className="no-conversations">
@@ -134,7 +190,14 @@ const Messages = () => {
                     {conversation.users?.username || "Unknown User"}
                   </span>
                   {conversation.last_message && (
-                    <span className="conversation-preview">
+                    <span
+                      className={`conversation-preview ${
+                        conversation.is_sender ? "sent" : "received"
+                      }`}
+                    >
+                      {conversation.is_sender && (
+                        <span className="sent-indicator">You: </span>
+                      )}
                       {conversation.last_message.substring(0, 30)}
                       {conversation.last_message.length > 30 ? "..." : ""}
                     </span>
@@ -163,7 +226,7 @@ const Messages = () => {
 };
 
 Messages.propTypes = {
-  onSelectConversation: PropTypes.func, // Add prop validation
+  onSelectConversation: PropTypes.func,
 };
 
 export default Messages;
