@@ -67,7 +67,6 @@ async function signUp(req, res) {
 
 // Log-In function
 async function logIn(req, res) {
-  console.log("Login request body:", req.body);
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -80,15 +79,11 @@ async function logIn(req, res) {
       password,
     });
 
-    console.log("Supabase login response:", { data, error });
-
     if (error || !data?.user) {
       return res.status(400).json({ error: error?.message || "Invalid login credentials" });
     }
 
     const user = data.user;
-
-    console.log("User ID from Supabase Auth:", user.id);
 
     // Fetch the username from the 'users' table
     const { data: userData, error: userError } = await supabase
@@ -96,9 +91,6 @@ async function logIn(req, res) {
       .select('username, profile_pic_url')
       .eq('id', user.id)
       .single();
-
-    console.log("User data fetched from 'users' table:", userData);
-    console.log("Error fetching user data:", userError);
 
     if (userError) {
       if (userError.message === "Requested single row but no rows returned") {
@@ -158,7 +150,6 @@ const handleLogin = async (e) => {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
 
-    console.log("Logged in user:", data.user);
     setUser(data.user); // Store the logged-in user in state
   } catch (err) {
     setError(err.message);
@@ -188,13 +179,9 @@ async function getUserData(userId) {
 
 // Get User function
 export const getUser = async (req, res) => {
-  console.log("Authenticated user in getUser:", req.user); // Debugging req.user
-
   const userId = req.user?.id; // Assuming middleware attaches the user ID
-  console.log("Authenticated user:", req.user); // Debugging
   
   if (!userId) {
-    console.warn("No userId found in req.user. Returning unauthorized.");
     return res.status(401).json({ error: "Unauthorized" });
   }
 
@@ -209,8 +196,6 @@ export const getUser = async (req, res) => {
       console.error("Error fetching user data from Supabase:", error);
       return res.status(400).json({ error: error.message });
     }
-
-    console.log("User data fetched successfully:", data); // Debugging user data
 
     res.status(200).json({
       id: data.id, // Explicitly include the ID in the response
@@ -230,10 +215,7 @@ export const refreshAuthToken = async (req, res) => {
     const cookies = cookie.parse(req.headers.cookie || '');
     const refreshToken = cookies.refreshToken;
     
-    console.log("Processing refresh token request");
-    
     if (!refreshToken) {
-      console.warn("No refresh token found in cookies");
       return res.status(401).json({ error: "No refresh token provided" });
     }
     
@@ -251,8 +233,6 @@ export const refreshAuthToken = async (req, res) => {
       console.error("No session data returned when refreshing token");
       return res.status(401).json({ error: "Failed to refresh session" });
     }
-    
-    console.log("Token refreshed successfully");
     
     // Set the new access token and refresh token as cookies
     res.setHeader('Set-Cookie', [

@@ -22,9 +22,6 @@ const AppContent = () => {
   const { user } = useUser();
   const { isNavVisible } = useNavigation();
 
-  // Log the user context to the console
-  console.log("UserContext:", user);
-
   return (
     <Router>
       {isNavVisible && <Navbar />}

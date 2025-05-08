@@ -52,9 +52,6 @@ export const getAllPosts = async (req, res) => {
       throw postsError;
     }
 
-    // Log the number of posts retrieved to help debug
-    console.log(`Retrieved ${posts?.length || 0} posts from database`);
-
     if (!currentUserId || !posts || posts.length === 0) {
       // If no user is authenticated or no posts, return posts without liked status
       return res.status(200).json(posts || []);
@@ -79,9 +76,6 @@ export const getAllPosts = async (req, res) => {
       ...post,
       liked: likedPostIds.has(post.id)
     }));
-
-    // Log the number of posts being returned
-    console.log(`Returning ${postsWithLikedStatus.length} posts with liked status`);
 
     res.status(200).json(postsWithLikedStatus);
   } catch (err) {
@@ -109,9 +103,6 @@ export const createPost = async (req, res) => {
       return res.status(400).json({ error: "Image is required" });
     }
 
-    console.log("Processing file upload:", file);
-    console.log("User ID:", user_id);
-
     const fileName = `${Date.now()}-${file.originalname}`;
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from("uploads")
@@ -120,7 +111,6 @@ export const createPost = async (req, res) => {
       });
 
     if (uploadError) {
-      console.error("Error uploading file to Supabase:", uploadError);
       return res.status(500).json({ error: "Failed to upload image" });
     }
 
@@ -144,13 +134,11 @@ export const createPost = async (req, res) => {
       .select();
 
     if (postError) {
-      console.error("Error inserting post into database:", postError);
       return res.status(500).json({ error: "Failed to create post" });
     }
 
     res.status(201).json(postData[0]);
   } catch (err) {
-    console.error("Error creating post:", err);
     res.status(500).json({ error: "Failed to create post" });
   }
 };

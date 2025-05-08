@@ -128,11 +128,7 @@ export const createOrFetchConversation = async (req, res) => {
   const { recipientId } = req.body;
   const senderId = req.user.id;
 
-  console.log("Authenticated user in createOrFetchConversation:", req.user); // Debugging req.user
-  console.log("Recipient ID received in request body:", recipientId); // Debugging recipientId
-
   if (!senderId) {
-    console.warn("No senderId found in req.user. Returning unauthorized.");
     return res.status(401).json({ error: "Unauthorized" });
   }
 
@@ -143,11 +139,8 @@ export const createOrFetchConversation = async (req, res) => {
       .eq('user_id', senderId);
 
     if (senderError) {
-      console.error("Error fetching sender's conversations:", senderError);
       throw new Error(senderError.message);
     }
-
-    console.log("Sender's conversations fetched successfully:", senderConversations); // Debugging sender conversations
 
     const { data: recipientConversations, error: recipientError } = await supabase
       .from('conversation_members')
@@ -155,18 +148,14 @@ export const createOrFetchConversation = async (req, res) => {
       .eq('user_id', recipientId);
 
     if (recipientError) {
-      console.error("Error fetching recipient's conversations:", recipientError);
       throw new Error(recipientError.message);
     }
-
-    console.log("Recipient's conversations fetched successfully:", recipientConversations); // Debugging recipient conversations
 
     const existingConversation = senderConversations.find((sc) =>
       recipientConversations.some((rc) => rc.conversation_id === sc.conversation_id)
     );
 
     if (existingConversation) {
-      console.log("Existing conversation found:", existingConversation); // Debugging existing conversation
       return res.status(200).json({ conversationId: existingConversation.conversation_id });
     }
 
@@ -177,11 +166,8 @@ export const createOrFetchConversation = async (req, res) => {
       .select();
 
     if (createError) {
-      console.error("Error creating new conversation:", createError);
       throw new Error(createError.message);
     }
-
-    console.log("New conversation created successfully:", newConversation); // Debugging new conversation
 
     const conversationId = newConversation[0].id;
 
@@ -191,11 +177,8 @@ export const createOrFetchConversation = async (req, res) => {
     ]);
 
     if (memberError) {
-      console.error("Error adding members to conversation:", memberError);
       throw new Error(memberError.message);
     }
-
-    console.log("Members added to conversation successfully."); // Debugging member addition
 
     res.status(201).json({ conversationId });
   } catch (error) {
