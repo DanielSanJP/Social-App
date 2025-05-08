@@ -9,10 +9,12 @@ import "../styles/Messages.css";
 const Messages = ({ onSelectConversation }) => {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const { user } = useUser();
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Check if user exists in context
     if (!user) {
       console.error("User not logged in, redirecting to login...");
       navigate("/login");
@@ -22,11 +24,19 @@ const Messages = ({ onSelectConversation }) => {
     const fetchConversations = async () => {
       try {
         setLoading(true);
+        setError(null);
+
+        // Get auth token from cookies
         const authToken = Cookies.get("authToken");
+
+        // Debug: Log cookies and auth token
+        console.log("All cookies:", document.cookie);
+        console.log("Auth token from cookies:", authToken);
 
         if (!authToken) {
           console.error("No authentication token found");
           setLoading(false);
+          setError("Authentication failed. Please log in again.");
           navigate("/login");
           return;
         }
@@ -34,7 +44,7 @@ const Messages = ({ onSelectConversation }) => {
         console.log(
           "Auth Token in Messages.jsx fetchConversations:",
           authToken
-        ); // Debug log
+        );
 
         const response = await axios.get(
           `${baseUrl}/api/messages/conversations`,
@@ -52,12 +62,14 @@ const Messages = ({ onSelectConversation }) => {
       } catch (error) {
         if (error.response && error.response.status === 401) {
           console.error("Unauthorized, redirecting to login...");
+          setError("Your session has expired. Please log in again.");
           navigate("/login");
         } else if (error.response && error.response.status === 404) {
           console.warn("No conversations found.");
           setConversations([]); // Set conversations to an empty array
         } else {
           console.error("Error fetching conversations:", error);
+          setError("Error loading conversations. Please try again later.");
         }
       } finally {
         setLoading(false);
@@ -99,6 +111,7 @@ const Messages = ({ onSelectConversation }) => {
   return (
     <div className="messages-container">
       <h2>Your Conversations</h2>
+      {error && <div className="error-message">{error}</div>}
       <div className="messages-list">
         {conversations.length === 0 ? (
           <p className="no-conversations">

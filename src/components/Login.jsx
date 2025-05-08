@@ -3,6 +3,7 @@ import { useUser } from "../contexts/UserContext";
 import { useNavigate } from "react-router-dom"; // Import useNavigate
 import { baseUrl } from "../utils/api"; // Import baseUrl
 import "../styles/Login.css"; // Import CSS for styling
+import Cookies from "js-cookie"; // Import js-cookie
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -27,6 +28,25 @@ function Login() {
       if (!response.ok) throw new Error(data.error);
 
       console.log("Logged in user:", data.user);
+
+      // Explicitly save the auth token to cookies
+      if (data.token) {
+        Cookies.set("authToken", data.token, {
+          path: "/",
+          secure: location.protocol === "https:",
+          sameSite: "Lax",
+        });
+        console.log("Auth token saved to cookies:", data.token);
+      }
+
+      // If refresh token is provided, save it too
+      if (data.refreshToken) {
+        Cookies.set("refreshToken", data.refreshToken, {
+          path: "/",
+          secure: location.protocol === "https:",
+          sameSite: "Lax",
+        });
+      }
 
       // Store both naming conventions for the profile picture
       setUser({

@@ -123,6 +123,8 @@ async function logIn(req, res) {
         username: userData.username,
         profile_pic_url: userData.profile_pic_url,
       },
+      token: data.session.access_token,           // Include token in response
+      refreshToken: data.session.refresh_token    // Include refresh token in response
     });
   } catch (err) {
     console.error("Login error:", err);
