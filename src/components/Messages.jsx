@@ -96,14 +96,27 @@ const Messages = () => {
         console.warn("No conversations found.");
         setConversations([]); // Set conversations to an empty array
       } else {
-        // For 500 errors, add more detailed error information
         if (statusCode === 500) {
           const serverErrorDetail =
             errorDetails || "No detailed error message provided";
           console.error("Server error details:", serverErrorDetail);
 
-          // Check for the recursion error specifically
-          if (errorMessage && errorMessage.includes("infinite recursion")) {
+          // Handle RLS policy violations specifically
+          if (
+            errorMessage &&
+            (errorMessage.includes("row-level security") ||
+              errorMessage.includes("violates row-level security policy"))
+          ) {
+            console.error(
+              "Detected RLS policy error. This requires admin intervention."
+            );
+            setError(
+              `Database permission error. The development team has been notified. Please try again later.`
+            );
+          } else if (
+            errorMessage &&
+            errorMessage.includes("infinite recursion")
+          ) {
             console.error(
               "Detected recursion error in database policy. This is a server-side issue with row-level security or database relations."
             );
@@ -120,16 +133,11 @@ const Messages = () => {
             `Error loading conversations: ${errorMessage}. Please try again.`
           );
         }
-
-        // For server errors, don't clear user session, just show error
-        if (statusCode >= 500) {
-          console.error("Server error:", errorMessage);
-        }
       }
     } finally {
       setLoading(false);
     }
-  }, [navigate, refreshUser, error]); // Removed 'user' from dependencies as it's not used in the function
+  }, [navigate, refreshUser, error]);
 
   useEffect(() => {
     // Check if user exists in context

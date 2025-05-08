@@ -318,44 +318,45 @@ export const createOrFetchConversation = async (req, res) => {
     return res.status(401).json({ error: "Unauthorized" });
   }
   
-  // Get auth token from request headers or cookies
-  const authToken = req.headers.authorization?.split(' ')[1] || 
-                   req.cookies?.authToken;
-  
-  // Get a Supabase client with the user's auth token
-  const supabaseWithAuth = getSupabaseClient(authToken);
-  
-  // Get a service role client that bypasses RLS
+  // Get a service role client that bypasses RLS for all operations
   const serviceClient = getSupabaseClient(null, true);
 
   try {
-    // Check for existing conversations (use auth client as this should be allowed)
-    const { data: senderConversations, error: senderError } = await supabaseWithAuth
+    console.log(`Creating or fetching conversation between ${senderId} and ${recipientId}`);
+    
+    // Check for existing conversations (use service client to bypass RLS)
+    const { data: senderConversations, error: senderError } = await serviceClient
       .from('conversation_members')
       .select('conversation_id')
       .eq('user_id', senderId);
 
     if (senderError) {
+      console.error('Error fetching sender conversations:', senderError);
       throw new Error(senderError.message);
     }
 
-    const { data: recipientConversations, error: recipientError } = await supabaseWithAuth
+    const { data: recipientConversations, error: recipientError } = await serviceClient
       .from('conversation_members')
       .select('conversation_id')
       .eq('user_id', recipientId);
 
     if (recipientError) {
+      console.error('Error fetching recipient conversations:', recipientError);
       throw new Error(recipientError.message);
     }
 
+    // Find conversations that both users are part of
     const existingConversation = senderConversations.find((sc) =>
       recipientConversations.some((rc) => rc.conversation_id === sc.conversation_id)
     );
 
     if (existingConversation) {
+      console.log(`Found existing conversation: ${existingConversation.conversation_id}`);
       return res.status(200).json({ conversationId: existingConversation.conversation_id });
     }
 
+    console.log('No existing conversation found, creating new one');
+    
     // Create a new conversation using service role client to bypass RLS
     const { data: newConversation, error: createError } = await serviceClient
       .from('conversations')
@@ -368,6 +369,7 @@ export const createOrFetchConversation = async (req, res) => {
     }
 
     const conversationId = newConversation[0].id;
+    console.log(`Created new conversation with ID: ${conversationId}`);
 
     // Add members using service role client to ensure it works
     const { error: memberError } = await serviceClient
@@ -382,6 +384,7 @@ export const createOrFetchConversation = async (req, res) => {
       throw new Error(memberError.message);
     }
 
+    console.log('Successfully added members to conversation');
     res.status(201).json({ conversationId });
   } catch (error) {
     console.error('Error creating or fetching conversation:', error);

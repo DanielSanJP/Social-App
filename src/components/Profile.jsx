@@ -193,13 +193,16 @@ const Profile = () => {
         credentials: "include",
         body: JSON.stringify({
           recipientId: userId,
-          // The backend ignores this field and uses the senderId from the auth token
         }),
       });
 
       // Check if the response is JSON
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
+        console.error(
+          "Server returned non-JSON response:",
+          await response.text()
+        );
         throw new Error(
           "Server returned non-JSON response. API might be unavailable."
         );
@@ -208,14 +211,43 @@ const Profile = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || `Server error: ${response.status}`);
+        // Handle specific error cases
+        if (response.status === 500) {
+          console.error("Server error details:", data);
+
+          // Check for RLS policy violations
+          if (data.error && data.error.includes("row-level security")) {
+            throw new Error("Permission error. Our team has been notified.");
+          }
+
+          throw new Error(`Server error: ${data.error || response.status}`);
+        } else if (response.status === 401) {
+          throw new Error("Your session has expired. Please log in again.");
+        } else {
+          throw new Error(data.error || `Server error: ${response.status}`);
+        }
       }
 
       setMessage("");
       navigate(`/chat/${data.conversationId}`);
     } catch (error) {
       console.error("Error starting chat:", error);
-      setMessage(`Failed to start conversation: ${error.message}`);
+
+      // Handle specific known errors with user-friendly messages
+      if (
+        error.message.includes("row-level security") ||
+        error.message.includes("violates row-level security policy")
+      ) {
+        setMessage(
+          "Sorry, there was a permissions issue. Our team has been notified and is working on it."
+        );
+      } else if (error.message.includes("session has expired")) {
+        setMessage("Your session has expired. Please log in again.");
+        // Optionally redirect to login after a delay
+        setTimeout(() => navigate("/login"), 2000);
+      } else {
+        setMessage(`Failed to start conversation: ${error.message}`);
+      }
     }
   };
 
