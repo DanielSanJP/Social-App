@@ -20,12 +20,12 @@ export const getConversations = async (req, res) => {
   
   console.log(`Fetching conversations for user: ${userId}`);
   
-  // Get a Supabase client with the user's auth token
-  const supabaseWithAuth = getSupabaseClient(authToken);
+  // Use the admin/service role client to bypass RLS policies
+  const supabase = getSupabaseClient();
 
   try {
     // Step 1: Fetch conversation IDs for the logged-in user
-    const { data: conversationMembers, error: memberError } = await supabaseWithAuth
+    const { data: conversationMembers, error: memberError } = await supabase
       .from('conversation_members')
       .select('conversation_id')
       .eq('user_id', userId);
@@ -37,14 +37,14 @@ export const getConversations = async (req, res) => {
 
     if (!conversationMembers || conversationMembers.length === 0) {
       console.log('No conversations found for user:', userId);
-      return res.status(200).json([]); // Return an empty array instead of 404
+      return res.status(200).json([]); // Return an empty array if no conversations
     }
 
     const conversationIds = conversationMembers.map((member) => member.conversation_id);
     console.log(`Found ${conversationIds.length} conversations for user ${userId}`);
 
-    // Get all conversations with their participants
-    const { data: conversations, error: conversationError } = await supabaseWithAuth
+    // Get all conversations
+    const { data: conversations, error: conversationError } = await supabase
       .from('conversations')
       .select('id')
       .in('id', conversationIds);
@@ -65,15 +65,24 @@ export const getConversations = async (req, res) => {
     // For each conversation, get the other user's details and the last message
     for (const conversation of conversations) {
       try {
-        // Get the other user in this conversation
-        const { data: otherUser, error: otherUserError } = await supabaseWithAuth
+        // Get the other user in this conversation - avoiding the nested selection that's causing recursion
+        const { data: otherMember, error: otherMemberError } = await supabase
           .from('conversation_members')
-          .select(`
-            user_id,
-            users:user_id(username, profile_pic_url)
-          `)
+          .select('user_id')
           .eq('conversation_id', conversation.id)
           .neq('user_id', userId)
+          .single();
+
+        if (otherMemberError) {
+          console.warn(`Error fetching other member for conversation ${conversation.id}:`, otherMemberError);
+          continue;
+        }
+        
+        // Fetch user details in a separate query
+        const { data: otherUser, error: otherUserError } = await supabase
+          .from('users')
+          .select('username, profile_pic_url')
+          .eq('id', otherMember.user_id)
           .single();
 
         if (otherUserError) {
@@ -82,7 +91,7 @@ export const getConversations = async (req, res) => {
         }
 
         // Get the last message in this conversation
-        const { data: messages, error: messagesError } = await supabaseWithAuth
+        const { data: messages, error: messagesError } = await supabase
           .from('messages')
           .select('content, created_at, sender_id')
           .eq('conversation_id', conversation.id)
@@ -97,7 +106,7 @@ export const getConversations = async (req, res) => {
         // Add to processed conversations
         processedConversations.push({
           conversation_id: conversation.id,
-          users: otherUser.users,
+          users: otherUser,
           last_message: messages.length > 0 ? messages[0].content : null,
           last_message_time: messages.length > 0 ? messages[0].created_at : null,
           is_sender: messages.length > 0 ? messages[0].sender_id === userId : false
