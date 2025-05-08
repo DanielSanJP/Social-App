@@ -203,7 +203,7 @@ const Messages = () => {
     } finally {
       setLoading(false);
     }
-  }, [navigate, refreshUser, error, user, baseUrl]);
+  }, [navigate, refreshUser, user, error]); // Added 'error' back, but keeping 'baseUrl' out as it's a constant
 
   useEffect(() => {
     // Check if user exists in context

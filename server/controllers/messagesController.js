@@ -4,6 +4,9 @@ import { getSupabaseClient } from '../supabaseClient.js';
 export const getConversations = async (req, res) => {
   const userId = req.user?.id;
   
+  console.log("=====================================================");
+  console.log("Starting getConversations with user:", userId);
+
   if (!userId) {
     console.error('getConversations: No user ID found in request');
     return res.status(401).json({ error: 'Unauthorized' });
@@ -30,6 +33,8 @@ export const getConversations = async (req, res) => {
       .select('conversation_id')
       .eq('user_id', userId);
       
+    console.log("User conversations query result:", userConversations);
+
     if (userConvError) {
       console.error('Error fetching user conversation IDs:', userConvError);
       throw new Error(userConvError.message);
@@ -50,6 +55,8 @@ export const getConversations = async (req, res) => {
       .select('id, created_at')
       .in('id', conversationIds);
       
+    console.log("Conversation details query result:", conversations);
+
     if (convsError) {
       console.error('Error fetching conversations:', convsError);
       throw new Error(convsError.message);
@@ -151,6 +158,32 @@ export const getConversations = async (req, res) => {
       console.warn(`Encountered ${errors.length} errors while processing: ${JSON.stringify(errors)}`);
     }
     
+    // Add diagnostics
+    const diagnostics = async () => {
+      console.log("================ DIAGNOSTICS ================");
+      
+      // Check conversation_members for this user
+      const { data: memberCheck } = await supabase
+        .from('conversation_members')
+        .select('*')
+        .eq('user_id', userId);
+      console.log("Conversation members for user:", memberCheck);
+      
+      // Check conversations table
+      const { data: convCheck } = await supabase
+        .from('conversations')
+        .select('*');
+      console.log("All conversations:", convCheck);
+      
+      // Check messages table
+      const { data: msgCheck } = await supabase
+        .from('messages')
+        .select('*');
+      console.log("All messages:", msgCheck);
+    };
+
+    await diagnostics();
+
     res.status(200).json(processedConversations);
   } catch (error) {
     console.error('Error fetching conversations:', error);
