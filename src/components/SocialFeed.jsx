@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom"; // Import useNavigate
 import { formatDistance } from "date-fns";
 import { FaHeart, FaRegHeart, FaRegComment, FaEllipsisH } from "react-icons/fa"; // Import heart icons

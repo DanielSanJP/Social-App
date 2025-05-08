@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Cookies from "js-cookie";
-import { useUser } from "../contexts/UserContext";
+import PropTypes from "prop-types"; // Import PropTypes for validation
+import { useUser } from "../hooks/useUser";
 import { baseUrl } from "../utils/api"; // Import baseUrl
 import "../styles/Messages.css";
 
-const Messages = ({ onSelectConversation }) => {
+const Messages = () => {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -16,7 +17,6 @@ const Messages = ({ onSelectConversation }) => {
   useEffect(() => {
     // Check if user exists in context
     if (!user) {
-      console.error("User not logged in, redirecting to login...");
       navigate("/login");
       return;
     }
@@ -151,6 +151,10 @@ const Messages = ({ onSelectConversation }) => {
       </div>
     </div>
   );
+};
+
+Messages.propTypes = {
+  onSelectConversation: PropTypes.func, // Add prop validation
 };
 
 export default Messages;

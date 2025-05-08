@@ -1,28 +1,32 @@
-import React, { useEffect, useState } from "react";
-import { useUser } from "../contexts/UserContext";
-import { Navigate, useParams, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react"; // Removed unused 'React' import
+import { useUser } from "../hooks/useUser";
+import { useParams, useNavigate } from "react-router-dom";
 import Cookies from "js-cookie"; // Replace cookie with js-cookie
 import { baseUrl } from "../utils/api"; // Import baseUrl
 import "../styles/Profile.css"; // Import your CSS file for styling
 import UserPosts from "./UserPosts"; // Import UserPosts component
+import PropTypes from "prop-types";
 
 function ProtectedRoute({ children }) {
   const { user } = useUser();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate loading user data (adjust this logic based on your app)
     if (user !== undefined) {
       setIsLoading(false);
     }
   }, [user]);
 
   if (isLoading) {
-    return <p>Loading...</p>; // Show a loading state while user data is being fetched
+    return <p>Loading...</p>;
   }
 
   return children;
 }
+
+ProtectedRoute.propTypes = {
+  children: PropTypes.node.isRequired,
+};
 
 const Profile = () => {
   const { userId } = useParams(); // Get userId from URL params

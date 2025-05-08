@@ -1,4 +1,5 @@
 import express from 'express';
+import process from 'process';
 import authRoutes from './routes/authRoutes.js';  // Ensure this import path is correct
 import postRoutes from "./routes/postRoutes.js"; // Import the posts routes
 import userRoutes from "./routes/userRoutes.js"; // Import the users routes

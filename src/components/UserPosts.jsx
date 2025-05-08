@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import "../styles/UserPosts.css"; // Import CSS for styling
 import { useParams, useNavigate } from "react-router-dom"; // Import useNavigate
 import { baseUrl } from "../utils/api"; // Import baseUrl
@@ -11,7 +11,6 @@ const UserPosts = () => {
   const navigate = useNavigate(); // Initialize navigate
 
   useEffect(() => {
-    console.log("Fetching posts for userId:", userId); // Log the userId
     const fetchUserPosts = async () => {
       try {
         const response = await fetch(`${baseUrl}/api/posts?userId=${userId}`);

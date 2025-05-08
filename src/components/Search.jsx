@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { baseUrl } from "../utils/api"; // Import baseUrl
@@ -15,13 +15,11 @@ const Search = () => {
       return;
     }
 
-    console.log("Search Query Sent:", searchQuery); // Log the query
-
     try {
       const response = await axios.get(`${baseUrl}/api/users/search`, {
         params: { query: searchQuery },
       });
-      console.log("Search Response Received:", response.data); // Log the response
+
       setResults(Array.isArray(response.data) ? response.data : []); // Ensure it's an array
     } catch (err) {
       console.error("Error fetching search results:", err);

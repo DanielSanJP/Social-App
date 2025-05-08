@@ -1,3 +1,4 @@
+import process from 'process';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 

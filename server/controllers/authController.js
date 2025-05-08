@@ -1,6 +1,8 @@
 import { supabase } from '../supabaseClient.js';
-import { v4 as uuidv4 } from 'uuid'; // For generating unique file names
 import cookie from 'cookie'; // Import cookie library
+
+// Define process if not defined (for environments where it's not globally available)
+const process = process || { env: { NODE_ENV: 'development' } };
 
 // Sign-Up function
 async function signUp(req, res) {
@@ -24,7 +26,7 @@ async function signUp(req, res) {
     // If a profile picture is uploaded, upload it to the Supabase bucket
     if (profilePic) {
       const uniqueFileName = `${user.id}-${profilePic.originalname}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('uploads')
         .upload(uniqueFileName, profilePic.buffer, {
           contentType: profilePic.mimetype,
@@ -131,32 +133,6 @@ async function logIn(req, res) {
     res.status(500).json({ error: "Internal server error" });
   }
 }
-
-// Handle Login function for client-side
-const handleLogin = async (e) => {
-  e.preventDefault();
-  setError(null);
-
-  if (!email || !password) {
-    setError("Email and password are required.");
-    return;
-  }
-
-  try {
-    const response = await fetch("http://localhost:5000/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error);
-
-    setUser(data.user); // Store the logged-in user in state
-  } catch (err) {
-    setError(err.message);
-  }
-};
 
 // Get User Data function
 async function getUserData(userId) {
@@ -267,4 +243,4 @@ export const refreshAuthToken = async (req, res) => {
   }
 };
 
-export { signUp, logIn, handleLogin, getUserData };
+export { signUp, logIn, getUserData };

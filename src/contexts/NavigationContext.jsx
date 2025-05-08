@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext } from "react";
+import { createContext, useState } from "react";
+import PropTypes from "prop-types";
 
 const NavigationContext = createContext();
 
@@ -12,4 +13,8 @@ export const NavigationProvider = ({ children }) => {
   );
 };
 
-export const useNavigation = () => useContext(NavigationContext);
+NavigationProvider.propTypes = {
+  children: PropTypes.node.isRequired,
+};
+
+export default NavigationContext;

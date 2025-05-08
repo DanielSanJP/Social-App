@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { baseUrl } from "../utils/api"; // Import baseUrl
 import "../styles/Register.css"; // Assuming you have some CSS for styling
 

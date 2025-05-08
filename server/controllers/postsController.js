@@ -1,6 +1,5 @@
 import { supabase } from "../supabaseClient.js"; // Import the Supabase client
 import multer from "multer";
-import path from "path";
 import { hasUserLikedPost, addLike } from "../utils/likesUtil.js";
 
 // Configure multer for file uploads
@@ -13,7 +12,8 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage });
+// Multer upload configuration (exported for use in routes)
+export const upload = multer({ storage });
 
 // Refactor getAllPosts to include pagination
 export const getAllPosts = async (req, res) => {
@@ -104,7 +104,7 @@ export const createPost = async (req, res) => {
     }
 
     const fileName = `${Date.now()}-${file.originalname}`;
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from("uploads")
       .upload(fileName, file.buffer, {
         contentType: file.mimetype,
@@ -138,7 +138,8 @@ export const createPost = async (req, res) => {
     }
 
     res.status(201).json(postData[0]);
-  } catch (err) {
+  } catch (error) {
+    console.error("Failed to create post:", error.message);
     res.status(500).json({ error: "Failed to create post" });
   }
 };

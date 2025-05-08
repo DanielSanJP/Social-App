@@ -1,10 +1,8 @@
-import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { UserProvider, useUser } from "./contexts/UserContext"; // Import UserProvider and useUser
-import {
-  NavigationProvider,
-  useNavigation,
-} from "./contexts/NavigationContext"; // Import NavigationProvider and useNavigation
+import { UserProvider } from "./contexts/UserContext"; // Import only UserProvider from context
+import { useUser } from "./hooks/useUser"; // Import useUser from hooks
+import { NavigationProvider } from "./contexts/NavigationContext"; // Import only NavigationProvider
+import { useNavigation } from "./hooks/useNavigation"; // Import useNavigation from hooks
 import Navbar from "./components/Navbar";
 import Login from "./components/Login";
 import Signup from "./components/Signup";

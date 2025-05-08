@@ -1,3 +1,4 @@
+import process from 'process';
 import { supabase } from "../supabaseClient.js";
 import cookie from 'cookie'; // Import cookie library
 

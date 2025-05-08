@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import Cookies from "js-cookie";
-import { useUser } from "../contexts/UserContext";
-import { useNavigation } from "../contexts/NavigationContext";
+import { useUser } from "../hooks/useUser";
+import { useNavigation } from "../hooks/useNavigation";
 import { FaArrowLeft } from "react-icons/fa";
 import { baseUrl } from "../utils/api"; // Import baseUrl
 import "../styles/Chat.css";
@@ -20,7 +20,6 @@ const Chat = () => {
   const messagesEndRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
   const intervalRef = useRef(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -47,7 +46,6 @@ const Chat = () => {
   // Function to refresh auth token if needed
   const refreshAuthToken = async () => {
     try {
-      console.log("Attempting to refresh auth token in Chat component...");
       const response = await axios.post(
         `${baseUrl}/api/auth/refresh`,
         {},
@@ -55,12 +53,10 @@ const Chat = () => {
       );
 
       if (response.status === 200) {
-        console.log("Auth token refreshed successfully in Chat component");
         return true;
       }
       return false;
-    } catch (error) {
-      console.error("Error refreshing token in Chat component:", error);
+    } catch {
       return false;
     }
   };
@@ -99,8 +95,7 @@ const Chat = () => {
       });
 
       return userResponse.data;
-    } catch (error) {
-      console.error("Error fetching user details:", error);
+    } catch {
       return null;
     }
   };
@@ -109,7 +104,6 @@ const Chat = () => {
   const fetchMessages = useCallback(
     async (initial = false) => {
       if (initial) setLoading(true);
-      else setRefreshing(true);
 
       setError(null);
 
@@ -118,19 +112,8 @@ const Chat = () => {
         let authToken = location.state?.authToken || Cookies.get("authToken");
 
         if (!authToken) {
-          console.error("Authentication token not found");
           navigate("/login");
           return;
-        }
-
-        if (initial) {
-          console.log(
-            `Fetching messages for conversation ID: ${conversationId}`
-          );
-        } else {
-          console.log(
-            `Refreshing messages for conversation ID: ${conversationId}`
-          );
         }
 
         // Use the correct endpoint based on your server routes
@@ -194,16 +177,10 @@ const Chat = () => {
           }
         } else {
           if (initial) {
-            console.error(
-              "Expected array of messages but got:",
-              messagesResponse.data
-            );
             setMessages([]);
           }
         }
       } catch (error) {
-        console.error("Error fetching messages:", error);
-
         if (initial) {
           setError(
             `Failed to load messages: ${error.response?.status} ${error.response?.statusText}`
@@ -212,7 +189,6 @@ const Chat = () => {
 
         // If unauthorized, try to refresh the token
         if (error.response && error.response.status === 401) {
-          console.log("Token expired, attempting refresh...");
           const refreshed = await refreshAuthToken();
           if (refreshed) {
             const newAuthToken = Cookies.get("authToken");
@@ -234,8 +210,7 @@ const Chat = () => {
                     setError(null);
                   }
                 }
-              } catch (retryError) {
-                console.error("Retry failed after token refresh:", retryError);
+              } catch {
                 if (initial) {
                   setError("Session expired. Please log in again.");
                   navigate("/login");
@@ -250,7 +225,6 @@ const Chat = () => {
         }
       } finally {
         if (initial) setLoading(false);
-        else setRefreshing(false);
       }
     },
     [conversationId, location.state, navigate, user, otherUser]
@@ -283,7 +257,6 @@ const Chat = () => {
       const authToken = location.state?.authToken || Cookies.get("authToken");
 
       if (!authToken) {
-        console.error("Authentication token not found");
         navigate("/login");
         return;
       }
@@ -302,14 +275,12 @@ const Chat = () => {
       );
 
       if (!response.data) {
-        console.error("No message returned from the server.");
         return;
       }
 
       setMessages((prevMessages) => [...prevMessages, response.data]);
       setNewMessage("");
     } catch (error) {
-      console.error("Error sending message:", error);
       // Handle unauthorized error
       if (error.response && error.response.status === 401) {
         const refreshed = await refreshAuthToken();
@@ -385,11 +356,6 @@ const Chat = () => {
           })
         )}
         <div ref={messagesEndRef} />
-        {refreshing && (
-          <div className="refresh-indicator">
-            <span>•</span>
-          </div>
-        )}
       </div>
       <form onSubmit={handleSendMessage} className="message-form">
         <input

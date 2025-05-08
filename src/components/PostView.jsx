@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useUser } from "../contexts/UserContext"; // Assuming you have a UserContext
+import { useUser } from "../hooks/useUser"; // Updated import path
 import { baseUrl } from "../utils/api"; // Import baseUrl
 import "../styles/PostView.css"; // Import CSS for styling
 

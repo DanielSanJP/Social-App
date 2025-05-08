@@ -22,7 +22,7 @@ export const updateUser = async (req, res) => {
     // If a file is uploaded, upload it to the Supabase bucket
     if (profilePicFile) {
       const uniqueFileName = `${id}-${uuidv4()}-${profilePicFile.originalname}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("uploads")
         .upload(uniqueFileName, profilePicFile.buffer, {
           contentType: profilePicFile.mimetype,

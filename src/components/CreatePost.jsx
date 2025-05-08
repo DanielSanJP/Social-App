@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import "../styles/CreatePost.css";
 import Cookies from "js-cookie"; // Import the js-cookie library
 import { baseUrl } from "../utils/api"; // Import baseUrl
+import PropTypes from "prop-types"; // Add this import
 
 const CreatePost = ({ userId }) => {
   const [image, setImage] = useState(null);
@@ -88,6 +89,10 @@ const CreatePost = ({ userId }) => {
       </form>
     </div>
   );
+};
+
+CreatePost.propTypes = {
+  userId: PropTypes.string.isRequired, // Add prop validation for userId
 };
 
 export default CreatePost;

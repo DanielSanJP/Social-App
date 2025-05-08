@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom"; // Import useNavigate
-import { useUser } from "../contexts/UserContext";
+import { useUser } from "../hooks/useUser";
 import "../styles/Navbar.css"; // Import CSS for styling
 import {
   FaHome,
