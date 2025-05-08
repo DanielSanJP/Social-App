@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Cookies from "js-cookie";
@@ -14,6 +14,99 @@ const Messages = () => {
   const { user, refreshUser } = useUser();
   const navigate = useNavigate();
 
+  const fetchConversations = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Get auth token from cookies
+      const authToken = Cookies.get("authToken");
+
+      if (!authToken) {
+        console.error("No authentication token found");
+        setLoading(false);
+        setError("Authentication failed. Please log in again.");
+        navigate("/login");
+        return;
+      }
+
+      console.log(
+        "Fetching conversations with token:",
+        authToken ? "Token exists" : "No token"
+      );
+
+      const response = await axios.get(
+        `${baseUrl}/api/messages/conversations`,
+        {
+          withCredentials: true,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+        }
+      );
+
+      console.log("Conversations API response:", response.status);
+
+      // If we get a successful response but no data, handle it gracefully
+      if (!response.data) {
+        console.warn("API returned no data");
+        setConversations([]);
+        return;
+      }
+
+      // Sort conversations by last message time (most recent first)
+      const sortedConversations = response.data.sort((a, b) => {
+        // If no last_message_time, put at the end
+        if (!a.last_message_time) return 1;
+        if (!b.last_message_time) return -1;
+
+        // Sort by date descending (newest first)
+        return new Date(b.last_message_time) - new Date(a.last_message_time);
+      });
+
+      setConversations(sortedConversations);
+
+      // Reset any previous errors if successful
+      if (error) setError(null);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+
+      // Extract detailed error information
+      const statusCode = error.response?.status;
+      const errorMessage = error.response?.data?.error || error.message;
+
+      if (statusCode === 401) {
+        console.error("Unauthorized access, redirecting to login...");
+        setError("Your session has expired. Please log in again.");
+
+        // Clear cookies and user data
+        Cookies.remove("authToken");
+        Cookies.remove("refreshToken");
+
+        if (refreshUser) {
+          refreshUser(); // Update user context if refresh function exists
+        }
+
+        navigate("/login");
+      } else if (statusCode === 404) {
+        console.warn("No conversations found.");
+        setConversations([]); // Set conversations to an empty array
+      } else {
+        setError(
+          `Error loading conversations: ${errorMessage}. Please try again.`
+        );
+
+        // For server errors, don't clear user session, just show error
+        if (statusCode >= 500) {
+          console.error("Server error:", errorMessage);
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [navigate, refreshUser]);
+
   useEffect(() => {
     // Check if user exists in context
     if (!user) {
@@ -22,101 +115,8 @@ const Messages = () => {
       return;
     }
 
-    const fetchConversations = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Get auth token from cookies
-        const authToken = Cookies.get("authToken");
-
-        if (!authToken) {
-          console.error("No authentication token found");
-          setLoading(false);
-          setError("Authentication failed. Please log in again.");
-          navigate("/login");
-          return;
-        }
-
-        console.log(
-          "Fetching conversations with token:",
-          authToken ? "Token exists" : "No token"
-        );
-
-        const response = await axios.get(
-          `${baseUrl}/api/messages/conversations`,
-          {
-            withCredentials: true,
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${authToken}`,
-            },
-          }
-        );
-
-        console.log("Conversations API response:", response.status);
-
-        // If we get a successful response but no data, handle it gracefully
-        if (!response.data) {
-          console.warn("API returned no data");
-          setConversations([]);
-          return;
-        }
-
-        // Sort conversations by last message time (most recent first)
-        const sortedConversations = response.data.sort((a, b) => {
-          // If no last_message_time, put at the end
-          if (!a.last_message_time) return 1;
-          if (!b.last_message_time) return -1;
-
-          // Sort by date descending (newest first)
-          return new Date(b.last_message_time) - new Date(a.last_message_time);
-        });
-
-        setConversations(sortedConversations);
-
-        // Reset any previous errors if successful
-        if (error) setError(null);
-      } catch (error) {
-        console.error("Error fetching conversations:", error);
-
-        // Extract detailed error information
-        const statusCode = error.response?.status;
-        const errorMessage = error.response?.data?.error || error.message;
-
-        if (statusCode === 401) {
-          console.error("Unauthorized access, redirecting to login...");
-          setError("Your session has expired. Please log in again.");
-
-          // Clear cookies and user data
-          Cookies.remove("authToken");
-          Cookies.remove("refreshToken");
-
-          if (refreshUser) {
-            refreshUser(); // Update user context if refresh function exists
-          }
-
-          navigate("/login");
-        } else if (statusCode === 404) {
-          console.warn("No conversations found.");
-          setConversations([]); // Set conversations to an empty array
-        } else {
-          setError(
-            `Error loading conversations: ${errorMessage}. Please try again.`
-          );
-
-          // For server errors, don't clear user session, just show error
-          if (statusCode >= 500) {
-            console.error("Server error:", errorMessage);
-          }
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchConversations();
-  }, [user, navigate, refreshUser, error]);
+  }, [user, navigate, fetchConversations]);
 
   const handleSelectConversation = (conversation) => {
     try {
@@ -144,7 +144,7 @@ const Messages = () => {
   const handleRetry = () => {
     setError(null);
     setLoading(true);
-    // The useEffect will trigger again since we cleared the error state
+    fetchConversations();
   };
 
   if (loading) {

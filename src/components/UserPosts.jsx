@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "../styles/UserPosts.css"; // Import CSS for styling
 import { useParams, useNavigate } from "react-router-dom"; // Import useNavigate
 import { baseUrl } from "../utils/api"; // Import baseUrl
+import Cookies from "js-cookie"; // Import js-cookie for auth token
 
 const UserPosts = () => {
   const { userId } = useParams(); // Get the userId from the URL
@@ -13,7 +14,22 @@ const UserPosts = () => {
   useEffect(() => {
     const fetchUserPosts = async () => {
       try {
-        const response = await fetch(`${baseUrl}/api/posts?userId=${userId}`);
+        const authToken = Cookies.get("authToken");
+
+        if (!authToken) {
+          // Redirect to login if no auth token found
+          navigate("/login");
+          return;
+        }
+
+        const response = await fetch(`${baseUrl}/api/posts?userId=${userId}`, {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+          credentials: "include", // Include cookies in the request
+        });
+
         if (!response.ok) {
           throw new Error("Failed to fetch user posts");
         }
@@ -27,7 +43,7 @@ const UserPosts = () => {
     };
 
     fetchUserPosts();
-  }, [userId]);
+  }, [userId, navigate]);
 
   if (loading) {
     return <p>Loading posts...</p>;

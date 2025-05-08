@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "../hooks/useUser"; // Updated import path
 import { baseUrl } from "../utils/api"; // Import baseUrl
 import "../styles/PostView.css"; // Import CSS for styling
+import Cookies from "js-cookie"; // Import js-cookie for auth token
 
 const PostView = () => {
   const { state: post } = useLocation(); // Get post data from navigation state
@@ -31,9 +32,21 @@ const PostView = () => {
 
   const handleSave = async () => {
     try {
+      const authToken = Cookies.get("authToken");
+
+      if (!authToken) {
+        // Redirect to login if no auth token found
+        navigate("/login");
+        return;
+      }
+
       const response = await fetch(`${baseUrl}/api/posts/${post.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        credentials: "include", // Include cookies in the request
         body: JSON.stringify({ description }),
       });
       if (!response.ok) {
@@ -47,8 +60,20 @@ const PostView = () => {
 
   const handleDelete = async () => {
     try {
+      const authToken = Cookies.get("authToken");
+
+      if (!authToken) {
+        // Redirect to login if no auth token found
+        navigate("/login");
+        return;
+      }
+
       const response = await fetch(`${baseUrl}/api/posts/${post.id}`, {
         method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+        credentials: "include", // Include cookies in the request
       });
       if (!response.ok) {
         throw new Error("Failed to delete post");
