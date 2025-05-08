@@ -24,57 +24,63 @@ export const getConversations = async (req, res) => {
   const supabase = getSupabaseClient();
 
   try {
-    // Step 1: Fetch conversation IDs for the logged-in user
-    const { data: conversationMembers, error: memberError } = await supabase
-      .from('conversation_members')
-      .select('conversation_id')
-      .eq('user_id', userId);
+    // Instead of using conversation_members table directly (which has the problematic RLS policy),
+    // use a raw SQL query to bypass RLS and avoid the recursive policy
+    const { data: conversationsData, error: sqlError } = await supabase.rpc(
+      'get_user_conversations',
+      { user_id_param: userId }
+    ).catch(err => {
+      console.error('RPC error:', err);
+      
+      // Fallback method if RPC doesn't exist
+      return supabase.from('conversations')
+        .select(`
+          id,
+          created_at
+        `)
+        .filter('id', 'in', 
+          supabase.from('conversation_members')
+            .select('conversation_id')
+            .eq('user_id', userId)
+        );
+    });
 
-    if (memberError) {
-      console.error('Error fetching conversation members:', memberError);
-      throw new Error(memberError.message);
+    if (sqlError) {
+      console.error('Error fetching conversations with RPC/SQL:', sqlError);
+      throw new Error(sqlError.message);
     }
 
-    if (!conversationMembers || conversationMembers.length === 0) {
+    if (!conversationsData || conversationsData.length === 0) {
       console.log('No conversations found for user:', userId);
       return res.status(200).json([]); // Return an empty array if no conversations
     }
 
-    const conversationIds = conversationMembers.map((member) => member.conversation_id);
-    console.log(`Found ${conversationIds.length} conversations for user ${userId}`);
-
-    // Get all conversations
-    const { data: conversations, error: conversationError } = await supabase
-      .from('conversations')
-      .select('id')
-      .in('id', conversationIds);
-
-    if (conversationError) {
-      console.error('Error fetching conversations:', conversationError);
-      throw new Error(conversationError.message);
-    }
-
-    if (!conversations || conversations.length === 0) {
-      console.log('No conversation details found for IDs:', conversationIds);
-      return res.status(200).json([]);
-    }
+    console.log(`Found ${conversationsData.length} conversations for user ${userId}`);
 
     // Create an array to hold the processed conversations
     const processedConversations = [];
 
     // For each conversation, get the other user's details and the last message
-    for (const conversation of conversations) {
+    for (const conversation of conversationsData) {
       try {
-        // Get the other user in this conversation - avoiding the nested selection that's causing recursion
-        const { data: otherMember, error: otherMemberError } = await supabase
+        const conversationId = conversation.id;
+        
+        // Get all members in this conversation using direct parameter queries to avoid RLS recursion
+        const { data: members, error: membersError } = await supabase
           .from('conversation_members')
           .select('user_id')
-          .eq('conversation_id', conversation.id)
-          .neq('user_id', userId)
-          .single();
+          .eq('conversation_id', conversationId);
 
-        if (otherMemberError) {
-          console.warn(`Error fetching other member for conversation ${conversation.id}:`, otherMemberError);
+        if (membersError) {
+          console.warn(`Error fetching members for conversation ${conversationId}:`, membersError);
+          continue;
+        }
+
+        // Find the other user's ID (not the current user)
+        const otherUserId = members.find(member => member.user_id !== userId)?.user_id;
+        
+        if (!otherUserId) {
+          console.warn(`No other user found in conversation ${conversationId}`);
           continue;
         }
         
@@ -82,11 +88,11 @@ export const getConversations = async (req, res) => {
         const { data: otherUser, error: otherUserError } = await supabase
           .from('users')
           .select('username, profile_pic_url')
-          .eq('id', otherMember.user_id)
+          .eq('id', otherUserId)
           .single();
 
         if (otherUserError) {
-          console.warn(`Error fetching other user for conversation ${conversation.id}:`, otherUserError);
+          console.warn(`Error fetching other user for conversation ${conversationId}:`, otherUserError);
           continue;
         }
 
@@ -94,18 +100,18 @@ export const getConversations = async (req, res) => {
         const { data: messages, error: messagesError } = await supabase
           .from('messages')
           .select('content, created_at, sender_id')
-          .eq('conversation_id', conversation.id)
+          .eq('conversation_id', conversationId)
           .order('created_at', { ascending: false })
           .limit(1);
 
         if (messagesError) {
-          console.warn(`Error fetching messages for conversation ${conversation.id}:`, messagesError);
+          console.warn(`Error fetching messages for conversation ${conversationId}:`, messagesError);
           continue;
         }
 
         // Add to processed conversations
         processedConversations.push({
-          conversation_id: conversation.id,
+          conversation_id: conversationId,
           users: otherUser,
           last_message: messages.length > 0 ? messages[0].content : null,
           last_message_time: messages.length > 0 ? messages[0].created_at : null,
