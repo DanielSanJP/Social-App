@@ -29,10 +29,6 @@ const Messages = () => {
         // Get auth token from cookies
         const authToken = Cookies.get("authToken");
 
-        // Debug: Log cookies and auth token
-        console.log("All cookies:", document.cookie);
-        console.log("Auth token from cookies:", authToken);
-
         if (!authToken) {
           console.error("No authentication token found");
           setLoading(false);
@@ -40,11 +36,6 @@ const Messages = () => {
           navigate("/login");
           return;
         }
-
-        console.log(
-          "Auth Token in Messages.jsx fetchConversations:",
-          authToken
-        );
 
         const response = await axios.get(
           `${baseUrl}/api/messages/conversations`,
@@ -57,7 +48,6 @@ const Messages = () => {
           }
         );
 
-        console.log("Fetched Conversations:", response.data);
         setConversations(response.data || []);
       } catch (error) {
         if (error.response && error.response.status === 401) {
@@ -89,10 +79,6 @@ const Messages = () => {
         navigate("/login");
         return;
       }
-
-      // Debug log to check token before navigation
-      console.log("Auth token before navigation:", authToken);
-      console.log("Navigating to conversation:", conversation.conversation_id);
 
       // Pass the auth token in the location state
       navigate(`/chat/${conversation.conversation_id}`, {
