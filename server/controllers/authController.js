@@ -1,8 +1,9 @@
 import { supabase } from '../supabaseClient.js';
 import cookie from 'cookie'; // Import cookie library
+import process from 'process'; // Import process from Node.js
 
-// Define process if not defined (for environments where it's not globally available)
-const process = process || { env: { NODE_ENV: 'development' } };
+// Define a NODE_ENV variable for environments where process might not be available
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // Sign-Up function
 async function signUp(req, res) {
@@ -105,15 +106,15 @@ async function logIn(req, res) {
     res.setHeader('Set-Cookie', [
       cookie.serialize('authToken', data.session.access_token, {
         httpOnly: false, // Allow client-side access for debugging
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // Use lax for development
+        secure: NODE_ENV === 'production',
+        sameSite: NODE_ENV === 'production' ? 'strict' : 'lax', // Use lax for development
         maxAge: 60 * 60 * 24, // 1 day
         path: '/',
       }),
       cookie.serialize('refreshToken', data.session.refresh_token, {
         httpOnly: true, // Keep refresh token secure
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        secure: NODE_ENV === 'production',
+        sameSite: NODE_ENV === 'production' ? 'strict' : 'lax',
         maxAge: 60 * 60 * 24 * 30, // 30 days
         path: '/',
       })
@@ -216,14 +217,14 @@ export const refreshAuthToken = async (req, res) => {
     res.setHeader('Set-Cookie', [
       cookie.serialize('authToken', data.session.access_token, {
         httpOnly: false, // Frontend needs to access this
-        secure: process.env.NODE_ENV === 'production',
+        secure: NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 60 * 60 * 24, // 1 day
         path: '/',
       }),
       cookie.serialize('refreshToken', data.session.refresh_token, {
         httpOnly: true, // More secure
-        secure: process.env.NODE_ENV === 'production',
+        secure: NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 60 * 60 * 24 * 30, // 30 days
         path: '/',
