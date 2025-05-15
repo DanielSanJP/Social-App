@@ -45,32 +45,44 @@ const Signup = () => {
       <h2>Signup</h2>
       {error && <p style={{ color: "red" }}>{error}</p>}
       {success && <p style={{ color: "green" }}>{success}</p>}
-      <input
-        type="text"
-        placeholder="Username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        required
-      />
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-      />
-      <input
-        type="file"
-        accept="image/*"
-        onChange={(e) => setProfilePic(e.target.files[0])}
-      />
+      <div>
+        <p>Username:</p>
+        <input
+          type="text"
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          required
+        />
+      </div>
+      <div>
+        <p>Email:</p>
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+      </div>
+      <div>
+        <p>Password:</p>
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+      </div>
+      <div>
+        <p>Profile Picture:</p>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => setProfilePic(e.target.files[0])}
+        />
+      </div>
       <button type="submit">Signup</button>
     </form>
   );

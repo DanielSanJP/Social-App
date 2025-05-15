@@ -63,22 +63,33 @@ function Login() {
       <form className="Login-Form" onSubmit={handleLogin}>
         <h2>Login</h2>
         {error && <p style={{ color: "red" }}>{error}</p>}
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+        <div>
+          <p>Email:</p>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <p>Password:</p>
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
         <button type="submit">Login</button>
       </form>
+      <div className="signup-prompt">
+        <div>Don&apos;t have an account? </div>
+        <br />
+        <button onClick={() => navigate("/signup")}>Sign up</button>
+      </div>
     </div>
   );
 }

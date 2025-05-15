@@ -5,6 +5,11 @@
   padding: 10px;
   background-color: #000000;
   gap: 20px;
+  align-items: center;
+}
+
+.Register-Form p {
+  text-align: left;
 }
 
 .Register-Form input {
